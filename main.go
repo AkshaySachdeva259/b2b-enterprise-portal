@@ -23,7 +23,7 @@ func main() {
 	handler := router.New(db)
 
 	srv := &http.Server{
-		Addr:    ":3080",
+		Addr:    ":3081",
 		Handler: handler,
 	}
 

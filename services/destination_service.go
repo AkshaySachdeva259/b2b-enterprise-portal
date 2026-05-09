@@ -6,7 +6,7 @@ import (
 )
 
 type DestinationService interface {
-	GetAllPages() ([]models.Destination, error)
+	ListDestinations() ([]models.DestinationOption, error)
 }
 
 type destinationService struct {
@@ -17,6 +17,6 @@ func NewDestinationService(repo repository.DestinationRepository) DestinationSer
 	return &destinationService{repo: repo}
 }
 
-func (s *destinationService) GetAllPages() ([]models.Destination, error) {
-	return s.repo.GetAll()
+func (s *destinationService) ListDestinations() ([]models.DestinationOption, error) {
+	return s.repo.ListDestinations()
 }

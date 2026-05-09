@@ -1,0 +1,352 @@
+{
+  "info": {
+    "_postman_id": "3c889cec-1c08-4c52-9f8e-92f571f1fe5f",
+    "name": "B2B Enterprise Pack Wallet Orders API",
+    "description": "Focused Postman collection for the pack listing, wallet, assignment, and order summary APIs added to the B2B Enterprise Portal.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Destinations",
+      "item": [
+        {
+          "name": "Get Destinations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/destinations",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "destinations"
+              ]
+            },
+            "description": "Returns destination name and display name for pack pills."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Packs",
+      "item": [
+        {
+          "name": "List Packs - All",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/packs?limit={{limit}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "packs"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            },
+            "description": "Returns top packs when no destination or page_name filter is supplied."
+          },
+          "response": []
+        },
+        {
+          "name": "List Packs - By Destination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/packs?destination={{destination}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "packs"
+              ],
+              "query": [
+                {
+                  "key": "destination",
+                  "value": "{{destination}}"
+                }
+              ]
+            },
+            "description": "Returns packs filtered by destination."
+          },
+          "response": []
+        },
+        {
+          "name": "List Packs - By Page Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/packs?page_name={{pageName}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "packs"
+              ],
+              "query": [
+                {
+                  "key": "page_name",
+                  "value": "{{pageName}}"
+                }
+              ]
+            },
+            "description": "Returns packs filtered by page_name."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pack Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/packs/{{catalogId}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "packs",
+                "{{catalogId}}"
+              ]
+            },
+            "description": "Returns the full detail payload for a catalog."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Pack From Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenantId}}\",\n  \"receiver_user_id\": \"{{receiverUserId}}\",\n  \"catalog_id\": {{catalogId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/packs/assign",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "packs",
+                "assign"
+              ]
+            },
+            "description": "Charges the tenant wallet, allocates or reuses an eSIM, assigns the pack, and records the order."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Get Wallet Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/tenants/{{tenantId}}/wallet",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                "wallet"
+              ]
+            },
+            "description": "Returns wallet balance with the last 5 wallet transactions."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Get Recent Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/tenants/{{tenantId}}/orders/recent?limit={{recentLimit}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                "orders",
+                "recent"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{recentLimit}}"
+                }
+              ]
+            },
+            "description": "Returns the most recent pack orders funded from wallet."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/tenants/{{tenantId}}/orders?limit={{historyLimit}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{historyLimit}}"
+                }
+              ]
+            },
+            "description": "Returns pack order history, capped at the latest 20 rows."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Today Revenue Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/tenants/{{tenantId}}/orders/summary?timezone={{timezone}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "tenants",
+                "{{tenantId}}",
+                "orders",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "timezone",
+                  "value": "{{timezone}}"
+                }
+              ]
+            },
+            "description": "Returns today's completed pack revenue and today's total packs sold."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "scheme",
+      "value": "http"
+    },
+    {
+      "key": "host",
+      "value": "localhost"
+    },
+    {
+      "key": "port",
+      "value": "3080"
+    },
+    {
+      "key": "tenantId",
+      "value": "1"
+    },
+    {
+      "key": "catalogId",
+      "value": "1"
+    },
+    {
+      "key": "receiverUserId",
+      "value": "user_123"
+    },
+    {
+      "key": "pageName",
+      "value": "europe"
+    },
+    {
+      "key": "destination",
+      "value": "asia"
+    },
+    {
+      "key": "limit",
+      "value": "30"
+    },
+    {
+      "key": "recentLimit",
+      "value": "5"
+    },
+    {
+      "key": "historyLimit",
+      "value": "20"
+    },
+    {
+      "key": "timezone",
+      "value": "Asia/Kolkata"
+    }
+  ]
+}

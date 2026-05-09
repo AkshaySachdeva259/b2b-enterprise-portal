@@ -7,7 +7,7 @@ import (
 )
 
 type DestinationController interface {
-	GetAllPages(w http.ResponseWriter, r *http.Request)
+	GetDestinations(w http.ResponseWriter, r *http.Request)
 }
 
 type destinationController struct {
@@ -18,11 +18,11 @@ func NewDestinationController(svc services.DestinationService) DestinationContro
 	return &destinationController{svc: svc}
 }
 
-func (c *destinationController) GetAllPages(w http.ResponseWriter, r *http.Request) {
-	pages, err := c.svc.GetAllPages()
+func (c *destinationController) GetDestinations(w http.ResponseWriter, r *http.Request) {
+	destinations, err := c.svc.ListDestinations()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to fetch pages")
+		writeError(w, http.StatusInternalServerError, "failed to fetch destinations")
 		return
 	}
-	writeJSON(w, http.StatusOK, Response{Data: pages, Message: "success"})
+	writeJSON(w, http.StatusOK, Response{Data: destinations, Message: "success"})
 }

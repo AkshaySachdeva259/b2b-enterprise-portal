@@ -1,13 +1,17 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
 	"com.jetapcglobal.b2b.com/services"
+	"github.com/gorilla/mux"
 )
 
 type CatalogController interface {
-	GetByPageName(w http.ResponseWriter, r *http.Request)
+	ListPacks(w http.ResponseWriter, r *http.Request)
+	GetPackDetail(w http.ResponseWriter, r *http.Request)
 }
 
 type catalogController struct {
@@ -18,17 +22,50 @@ func NewCatalogController(svc services.CatalogService) CatalogController {
 	return &catalogController{svc: svc}
 }
 
-func (c *catalogController) GetByPageName(w http.ResponseWriter, r *http.Request) {
-	pageName := r.URL.Query().Get("page_name")
-	if pageName == "" {
-		writeError(w, http.StatusBadRequest, "page_name query parameter is required")
-		return
+func (c *catalogController) ListPacks(w http.ResponseWriter, r *http.Request) {
+	limit := 0
+	if limitParam := firstNonEmpty(r.URL.Query().Get("limit")); limitParam != "" {
+		parsedLimit, err := strconv.Atoi(limitParam)
+		if err != nil || parsedLimit <= 0 {
+			writeError(w, http.StatusBadRequest, "limit must be a positive integer")
+			return
+		}
+		limit = parsedLimit
 	}
 
-	catalogs, err := c.svc.GetByPageName(pageName)
+	catalogs, err := c.svc.ListPacks(
+		firstNonEmpty(r.URL.Query().Get("page_name"), r.URL.Query().Get("destination")),
+		limit,
+	)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to fetch catalog")
+		writeError(w, http.StatusInternalServerError, "failed to fetch packs")
 		return
 	}
 	writeJSON(w, http.StatusOK, Response{Data: catalogs, Message: "success"})
+}
+
+func (c *catalogController) GetPackDetail(w http.ResponseWriter, r *http.Request) {
+	catalogIDParam := mux.Vars(r)["catalog_id"]
+	if catalogIDParam == "" {
+		writeError(w, http.StatusBadRequest, "catalog_id path parameter is required")
+		return
+	}
+
+	catalogID, err := strconv.ParseInt(catalogIDParam, 10, 64)
+	if err != nil || catalogID <= 0 {
+		writeError(w, http.StatusBadRequest, "catalog_id must be a valid int64")
+		return
+	}
+
+	catalog, err := c.svc.GetPackDetail(catalogID)
+	if err != nil {
+		if errors.Is(err, services.ErrPackCatalogNotFound) {
+			writeError(w, http.StatusNotFound, "catalog not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to fetch catalog details")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, Response{Data: catalog, Message: "success"})
 }
