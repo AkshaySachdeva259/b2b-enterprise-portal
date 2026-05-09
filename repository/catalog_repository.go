@@ -7,6 +7,7 @@ import (
 
 type CatalogRepository interface {
 	GetByPageName(pageName string) ([]models.Catalog, error)
+	ExistsByCatalogID(catalogID int64) (bool, error)
 }
 
 type catalogRepository struct {
@@ -24,4 +25,13 @@ func (r *catalogRepository) GetByPageName(pageName string) ([]models.Catalog, er
 		Order("created_at DESC").
 		Find(&results).Error
 	return results, err
+}
+
+func (r *catalogRepository) ExistsByCatalogID(catalogID int64) (bool, error) {
+	var count int64
+	err := r.db.
+		Model(&models.Catalog{}).
+		Where("catalog_id = ? AND deleted_at IS NULL", catalogID).
+		Count(&count).Error
+	return count > 0, err
 }
