@@ -24,6 +24,9 @@ func New(db *gorm.DB) http.Handler {
 	destCtrl := controllers.NewDestinationController(destSvc)
 	catalogCtrl := controllers.NewCatalogController(catalogSvc)
 	esimCtrl := controllers.NewEsimController(esimSvc)
+	tenantCreditLimitRepo := repository.NewTenantCreditLimitRepository(db)
+	tenantCreditLimitSvc := services.NewTenantCreditLimitService(tenantCreditLimitRepo)
+	tenantCreditLimitCtrl := controllers.NewTenantCreditLimitController(tenantCreditLimitSvc)
 
 	// Public routes
 	api := r.PathPrefix("/api").Subrouter()
@@ -33,6 +36,7 @@ func New(db *gorm.DB) http.Handler {
 	api.HandleFunc("/esims/inventory/{tenant_id}", esimCtrl.GetInventoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/esims/order", esimCtrl.OrderEsims).Methods(http.MethodPost)
 	api.HandleFunc("/esims/assign-catalog", esimCtrl.AssignCatalog).Methods(http.MethodPost)
+	api.HandleFunc("/tenants/{tenant_id}/credit-limit", tenantCreditLimitCtrl.GetCurrentByTenantID).Methods(http.MethodGet)
 
 	return r
 }
