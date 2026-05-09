@@ -53,6 +53,8 @@ func ensureTables(db *gorm.DB) {
 	}{
 		{model: &models.Destination{}},
 		{model: &models.Catalog{}},
+		{model: &models.Cart{}},
+		{model: &models.CartItem{}},
 		{model: &models.Esim{}, columns: []string{"TenantID"}},
 		{model: &models.B2BAllocation{}},
 	}
