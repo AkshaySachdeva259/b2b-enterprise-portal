@@ -1,0 +1,320 @@
+{
+  "info": {
+    "_postman_id": "0f4bb1c1-f465-44c2-b71c-4d645f1ea856",
+    "name": "B2B Enterprise Portal API",
+    "description": "Postman collection for the currently registered API endpoints in this project.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Pages",
+      "item": [
+        {
+          "name": "Get All Pages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/pages",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "pages"
+              ]
+            },
+            "description": "Returns all available pages."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        {
+          "name": "Get Catalog By Page Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/catalog?page_name={{pageName}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "catalog"
+              ],
+              "query": [
+                {
+                  "key": "page_name",
+                  "value": "{{pageName}}"
+                }
+              ]
+            },
+            "description": "Returns catalog entries for a specific page name."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "eSIMs",
+      "item": [
+        {
+          "name": "Get Inventory By Tenant ID - Path Param",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/esims/inventory/{{tenantId}}?status={{inventoryStatus}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "esims",
+                "inventory",
+                "{{tenantId}}"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "{{inventoryStatus}}"
+                }
+              ]
+            },
+            "description": "Returns eSIM inventory for a tenant. Supported status values: all, active, released, installed."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inventory By Tenant ID - Query Param",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/esims/inventory?tenant_id={{tenantId}}&status={{inventoryStatus}}",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "esims",
+                "inventory"
+              ],
+              "query": [
+                {
+                  "key": "tenant_id",
+                  "value": "{{tenantId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "{{inventoryStatus}}"
+                }
+              ]
+            },
+            "description": "Alternate inventory route using tenant_id as a query parameter."
+          },
+          "response": []
+        },
+        {
+          "name": "Order eSIMs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenantId}}\",\n  \"quantity\": {{quantity}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/esims/order",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "esims",
+                "order"
+              ]
+            },
+            "description": "Allocates released available eSIMs to the given tenant."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Catalog To Specific eSIM",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenantId}}\",\n  \"receiver_user_id\": \"{{receiverUserId}}\",\n  \"catalog_id\": {{catalogId}},\n  \"iccid\": \"{{iccid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/esims/assign-catalog",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "esims",
+                "assign-catalog"
+              ]
+            },
+            "description": "Assigns a catalog to a specific tenant-owned eSIM and creates a tbl_b2b_allocation entry."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Catalog To Random Tenant eSIM",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenantId}}\",\n  \"receiver_user_id\": \"{{receiverUserId}}\",\n  \"catalog_id\": {{catalogId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/esims/assign-catalog",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "esims",
+                "assign-catalog"
+              ]
+            },
+            "description": "If iccid is omitted, the service picks a random eSIM from the tenant inventory."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Catalog With Auto Allocate eSIM",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenantId}}\",\n  \"receiver_user_id\": \"{{receiverUserId}}\",\n  \"catalog_id\": {{catalogId}},\n  \"auto_allocate_esim\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/esims/assign-catalog",
+              "protocol": "{{scheme}}",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "api",
+                "esims",
+                "assign-catalog"
+              ]
+            },
+            "description": "If the tenant has no eSIM available, the service auto-allocates one from the released pool and assigns the catalog."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "scheme",
+      "value": "http"
+    },
+    {
+      "key": "host",
+      "value": "localhost"
+    },
+    {
+      "key": "port",
+      "value": "3080"
+    },
+    {
+      "key": "pageName",
+      "value": "home"
+    },
+    {
+      "key": "tenantId",
+      "value": "tenant-123"
+    },
+    {
+      "key": "inventoryStatus",
+      "value": "all"
+    },
+    {
+      "key": "quantity",
+      "value": "5"
+    },
+    {
+      "key": "catalogId",
+      "value": "12345"
+    },
+    {
+      "key": "receiverUserId",
+      "value": "customer-456"
+    },
+    {
+      "key": "iccid",
+      "value": "8910300000060165080"
+    }
+  ]
+}
