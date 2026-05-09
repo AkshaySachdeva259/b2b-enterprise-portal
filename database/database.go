@@ -13,7 +13,7 @@ import (
 var DB *gorm.DB
 
 func Connect() *gorm.DB {
-	dsn := os.Getenv("DATABASE_URL")
+	dsn := "postgresql://postgres:Jetpac_global@db.yzsmzrumvcikprukumud.supabase.co:5432/postgres?sslmode=disable"
 
 	logLevel := logger.Silent
 	if os.Getenv("APP_ENV") != "production" {
@@ -53,6 +53,8 @@ func ensureTables(db *gorm.DB) {
 	}{
 		{model: &models.Destination{}},
 		{model: &models.Catalog{}},
+		{model: &models.Cart{}},
+		{model: &models.CartItem{}},
 		{model: &models.Esim{}, columns: []string{"TenantID"}},
 		{model: &models.B2BAllocation{}},
 	}

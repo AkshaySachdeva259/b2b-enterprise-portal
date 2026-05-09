@@ -7,6 +7,7 @@ import (
 
 type CatalogRepository interface {
 	GetByPageName(pageName string) ([]models.Catalog, error)
+	GetByCatalogIDs(catalogIDs []int64) ([]models.Catalog, error)
 	ExistsByCatalogID(catalogID int64) (bool, error)
 }
 
@@ -22,6 +23,19 @@ func (r *catalogRepository) GetByPageName(pageName string) ([]models.Catalog, er
 	var results []models.Catalog
 	err := r.db.
 		Where("page_name = ? AND deleted_at IS NULL", pageName).
+		Order("created_at DESC").
+		Find(&results).Error
+	return results, err
+}
+
+func (r *catalogRepository) GetByCatalogIDs(catalogIDs []int64) ([]models.Catalog, error) {
+	results := make([]models.Catalog, 0)
+	if len(catalogIDs) == 0 {
+		return results, nil
+	}
+
+	err := r.db.
+		Where("catalog_id IN ? AND deleted_at IS NULL", catalogIDs).
 		Order("created_at DESC").
 		Find(&results).Error
 	return results, err
