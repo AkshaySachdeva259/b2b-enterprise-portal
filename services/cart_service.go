@@ -261,6 +261,11 @@ func (s *cartService) buildCartDetailFromCatalogs(cart *models.Cart, items []mod
 			return nil, err
 		}
 
+		catalog, err = withSelectedCatalogPrice(catalog, cart.Currency, price)
+		if err != nil {
+			return nil, err
+		}
+
 		unitAmount, err := parseDecimal(price.Value)
 		if err != nil {
 			return nil, ErrCartCurrencyNotSupported
@@ -436,10 +441,17 @@ func resolveCartCurrency(current string, requested string) string {
 		return requested
 	}
 
-	current = normalizeCartCurrency(current)
-	if current != "" {
-		return current
+	return models.DefaultCartCurrency
+}
+
+func withSelectedCatalogPrice(catalog models.Catalog, currency string, price catalogPriceEntry) (models.Catalog, error) {
+	selectedPrice, err := json.Marshal(map[string]catalogPriceEntry{
+		currency: price,
+	})
+	if err != nil {
+		return models.Catalog{}, err
 	}
 
-	return models.DefaultCartCurrency
+	catalog.Prices = selectedPrice
+	return catalog, nil
 }
