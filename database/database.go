@@ -13,8 +13,10 @@ import (
 var DB *gorm.DB
 
 func Connect() *gorm.DB {
-	dsn := "postgresql://postgres:Jetpac_global@db.yzsmzrumvcikprukumud.supabase.co:5432/postgres"
-
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL environment variable is not set")
+	}
 	logLevel := logger.Silent
 	if os.Getenv("APP_ENV") != "production" {
 		logLevel = logger.Info
