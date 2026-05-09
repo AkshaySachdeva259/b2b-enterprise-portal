@@ -16,15 +16,15 @@ func New(db *gorm.DB) http.Handler {
 	destRepo := repository.NewDestinationRepository(db)
 	catalogRepo := repository.NewCatalogRepository(db)
 	esimRepo := repository.NewEsimRepository(db)
+	tenantCreditLimitRepo := repository.NewTenantCreditLimitRepository(db)
 
 	destSvc := services.NewDestinationService(destRepo)
 	catalogSvc := services.NewCatalogService(catalogRepo)
-	esimSvc := services.NewEsimService(esimRepo, catalogRepo)
+	esimSvc := services.NewEsimService(esimRepo, catalogRepo, tenantCreditLimitRepo)
 
 	destCtrl := controllers.NewDestinationController(destSvc)
 	catalogCtrl := controllers.NewCatalogController(catalogSvc)
 	esimCtrl := controllers.NewEsimController(esimSvc)
-	tenantCreditLimitRepo := repository.NewTenantCreditLimitRepository(db)
 	tenantCreditLimitSvc := services.NewTenantCreditLimitService(tenantCreditLimitRepo)
 	tenantCreditLimitCtrl := controllers.NewTenantCreditLimitController(tenantCreditLimitSvc)
 
