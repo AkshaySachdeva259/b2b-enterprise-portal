@@ -16,6 +16,7 @@ type CartRepository interface {
 	Create(userID string, currency string) (*models.Cart, error)
 	UpdateCurrency(cartID uuid.UUID, currency string) error
 	ListItemsByCartID(cartID uuid.UUID) ([]models.CartItem, error)
+	DeleteItemsByCatalogIDs(cartID uuid.UUID, catalogIDs []int64) error
 	ReplaceItems(cartID uuid.UUID, items []models.CartItem) error
 }
 
@@ -77,6 +78,25 @@ func (r *cartRepository) ListItemsByCartID(cartID uuid.UUID) ([]models.CartItem,
 		Find(&items).Error
 
 	return items, err
+}
+
+func (r *cartRepository) DeleteItemsByCatalogIDs(cartID uuid.UUID, catalogIDs []int64) error {
+	if len(catalogIDs) == 0 {
+		return nil
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.
+			Model(&models.Cart{}).
+			Where("id = ?", cartID).
+			Update("updated_at", time.Now()).Error; err != nil {
+			return err
+		}
+
+		return tx.
+			Where("cart_id = ? AND catalog_id IN ?", cartID, catalogIDs).
+			Delete(&models.CartItem{}).Error
+	})
 }
 
 func (r *cartRepository) ReplaceItems(cartID uuid.UUID, items []models.CartItem) error {

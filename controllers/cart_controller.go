@@ -12,6 +12,7 @@ import (
 type CartController interface {
 	LoadCart(w http.ResponseWriter, r *http.Request)
 	UpdateCart(w http.ResponseWriter, r *http.Request)
+	DeleteCartItems(w http.ResponseWriter, r *http.Request)
 }
 
 type cartController struct {
@@ -22,6 +23,12 @@ type updateCartRequest struct {
 	UserID   string                       `json:"user_id"`
 	Currency string                       `json:"currency,omitempty"`
 	Items    []models.CartUpdateItemInput `json:"items"`
+}
+
+type deleteCartItemsRequest struct {
+	UserID     string  `json:"user_id"`
+	Currency   string  `json:"currency,omitempty"`
+	CatalogIDs []int64 `json:"catalog_ids"`
 }
 
 func NewCartController(svc services.CartService) CartController {
@@ -67,6 +74,32 @@ func (c *cartController) UpdateCart(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, err.Error())
 		default:
 			writeError(w, http.StatusInternalServerError, "failed to update cart")
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusOK, Response{Data: cart, Message: "success"})
+}
+
+func (c *cartController) DeleteCartItems(w http.ResponseWriter, r *http.Request) {
+	var req deleteCartItemsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	cart, err := c.svc.DeleteCartItems(firstNonEmpty(req.UserID), req.Currency, req.CatalogIDs)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrCartUserIDRequired),
+			errors.Is(err, services.ErrCartCatalogIDsRequired),
+			errors.Is(err, services.ErrCartCatalogIDRequired),
+			errors.Is(err, services.ErrCartCurrencyNotSupported):
+			writeError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, services.ErrCartCatalogNotFound):
+			writeError(w, http.StatusNotFound, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to delete cart items")
 		}
 		return
 	}

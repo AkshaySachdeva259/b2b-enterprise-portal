@@ -37,6 +37,7 @@ func New(db *gorm.DB) http.Handler {
 	api.HandleFunc("/catalog", catalogCtrl.GetByPageName).Methods(http.MethodGet)
 	api.HandleFunc("/cart/load", cartCtrl.LoadCart).Methods(http.MethodGet)
 	api.HandleFunc("/cart/update", cartCtrl.UpdateCart).Methods(http.MethodPut)
+	api.HandleFunc("/cart/items", cartCtrl.DeleteCartItems).Methods(http.MethodDelete)
 	api.HandleFunc("/esims/inventory", esimCtrl.GetInventoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/esims/inventory/{tenant_id}", esimCtrl.GetInventoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/esims/order", esimCtrl.OrderEsims).Methods(http.MethodPost)

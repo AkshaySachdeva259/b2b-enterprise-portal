@@ -13,6 +13,7 @@ import (
 
 var (
 	ErrCartUserIDRequired        = errors.New("user_id is required")
+	ErrCartCatalogIDsRequired    = errors.New("catalog_ids is required")
 	ErrCartCatalogIDRequired     = errors.New("catalog_id is required")
 	ErrCartInvalidItemQuantity   = errors.New("quantity must be greater than zero")
 	ErrCartCatalogNotFound       = errors.New("one or more catalog items were not found")
@@ -24,6 +25,7 @@ var (
 type CartService interface {
 	LoadCart(userID string, currency string) (*models.CartDetail, error)
 	UpdateCart(userID string, currency string, items []models.CartUpdateItemInput) (*models.CartDetail, error)
+	DeleteCartItems(userID string, currency string, catalogIDs []int64) (*models.CartDetail, error)
 }
 
 type cartService struct {
@@ -140,6 +142,30 @@ func (s *cartService) UpdateCart(userID string, currency string, items []models.
 	}
 
 	return s.buildCartDetailFromCatalogs(cart, storedItems, catalogs)
+}
+
+func (s *cartService) DeleteCartItems(userID string, currency string, catalogIDs []int64) (*models.CartDetail, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, ErrCartUserIDRequired
+	}
+
+	normalizedCatalogIDs, err := normalizeCartCatalogIDs(catalogIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	requestedCurrency := normalizeCartCurrency(currency)
+	cart, err := s.getOrCreateCart(userID, requestedCurrency)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.DeleteItemsByCatalogIDs(cart.ID, normalizedCatalogIDs); err != nil {
+		return nil, err
+	}
+
+	return s.LoadCart(userID, requestedCurrency)
 }
 
 func (s *cartService) getOrCreateCart(userID string, currency string) (*models.Cart, error) {
@@ -343,6 +369,29 @@ func normalizeCartItems(items []models.CartUpdateItemInput) ([]models.CartUpdate
 	}
 
 	return normalized, nil
+}
+
+func normalizeCartCatalogIDs(catalogIDs []int64) ([]int64, error) {
+	if len(catalogIDs) == 0 {
+		return nil, ErrCartCatalogIDsRequired
+	}
+
+	uniqueCatalogIDs := make([]int64, 0, len(catalogIDs))
+	seen := make(map[int64]struct{}, len(catalogIDs))
+
+	for _, catalogID := range catalogIDs {
+		if catalogID <= 0 {
+			return nil, ErrCartCatalogIDRequired
+		}
+		if _, exists := seen[catalogID]; exists {
+			continue
+		}
+
+		seen[catalogID] = struct{}{}
+		uniqueCatalogIDs = append(uniqueCatalogIDs, catalogID)
+	}
+
+	return uniqueCatalogIDs, nil
 }
 
 func cartItemCatalogIDs(items []models.CartUpdateItemInput) []int64 {
