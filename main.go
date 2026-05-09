@@ -6,9 +6,13 @@ import (
 
 	"com.jetapcglobal.b2b.com/database"
 	"com.jetapcglobal.b2b.com/router"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("no .env file found, relying on environment variables")
+	}
 	db := database.Connect()
 	sqlDB, err := db.DB()
 	if err != nil {
