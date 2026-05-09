@@ -2,24 +2,30 @@ package services
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 
 	"com.jetapcglobal.b2b.com/models"
 	"com.jetapcglobal.b2b.com/repository"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var (
 	ErrTenantIDRequired           = errors.New("tenant_id is required")
+	ErrTenantIDMustBeInt8         = errors.New("tenant_id must be a valid int8")
 	ErrReceiverUserIDRequired     = errors.New("receiver_user_id is required")
 	ErrCatalogIDRequired          = errors.New("catalog_id is required")
 	ErrInvalidEsimInventoryFilter = errors.New("status must be one of: active, all, released, installed")
 	ErrInvalidEsimQuantity        = errors.New("quantity must be greater than zero")
 	ErrInsufficientEsimInventory  = repository.ErrInsufficientEsimInventory
+	ErrInsufficientCreditLimit    = errors.New("insufficient credit limit for requested quantity")
 	ErrCatalogNotFound            = errors.New("catalog not found")
 	ErrTenantEsimNotFound         = repository.ErrTenantEsimNotFound
 	ErrTenantHasNoEsims           = repository.ErrTenantHasNoEsims
 )
+
+const esimUnitPriceUSD = 1.0
 
 type EsimService interface {
 	GetInventoryByTenantID(tenantID, filter string) ([]models.Esim, error)
@@ -28,12 +34,21 @@ type EsimService interface {
 }
 
 type esimService struct {
-	repo        repository.EsimRepository
-	catalogRepo repository.CatalogRepository
+	repo                  repository.EsimRepository
+	catalogRepo           repository.CatalogRepository
+	tenantCreditLimitRepo repository.TenantCreditLimitRepository
 }
 
-func NewEsimService(repo repository.EsimRepository, catalogRepo repository.CatalogRepository) EsimService {
-	return &esimService{repo: repo, catalogRepo: catalogRepo}
+func NewEsimService(
+	repo repository.EsimRepository,
+	catalogRepo repository.CatalogRepository,
+	tenantCreditLimitRepo repository.TenantCreditLimitRepository,
+) EsimService {
+	return &esimService{
+		repo:                  repo,
+		catalogRepo:           catalogRepo,
+		tenantCreditLimitRepo: tenantCreditLimitRepo,
+	}
 }
 
 func (s *esimService) GetInventoryByTenantID(tenantID, filter string) ([]models.Esim, error) {
@@ -63,6 +78,29 @@ func (s *esimService) OrderEsims(tenantID string, quantity int) ([]models.Esim, 
 
 	if quantity <= 0 {
 		return nil, ErrInvalidEsimQuantity
+	}
+
+	tenantIDInt, err := strconv.ParseInt(tenantID, 10, 64)
+	if err != nil {
+		return nil, ErrTenantIDMustBeInt8
+	}
+
+	tenantCommercials, err := s.tenantCreditLimitRepo.GetCurrentByTenantID(tenantIDInt)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrTenantCreditLimitNotFound
+		}
+		return nil, err
+	}
+
+	availableCreditLimit := 0.0
+	if tenantCommercials.CreditLimit != nil {
+		availableCreditLimit = *tenantCommercials.CreditLimit
+	}
+
+	totalOrderPrice := float64(quantity) * esimUnitPriceUSD
+	if totalOrderPrice > availableCreditLimit {
+		return nil, ErrInsufficientCreditLimit
 	}
 
 	esims, err := s.repo.AllocateReleasedInventory(tenantID, quantity)
