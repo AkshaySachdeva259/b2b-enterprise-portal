@@ -86,8 +86,12 @@ func (c *esimController) OrderEsims(w http.ResponseWriter, r *http.Request) {
 	esims, err := c.svc.OrderEsims(tenantID, req.Quantity)
 	if err != nil {
 		switch {
-		case errors.Is(err, services.ErrTenantIDRequired), errors.Is(err, services.ErrInvalidEsimQuantity):
+		case errors.Is(err, services.ErrTenantIDRequired), errors.Is(err, services.ErrInvalidEsimQuantity), errors.Is(err, services.ErrTenantIDMustBeInt8):
 			writeError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, services.ErrTenantCreditLimitNotFound):
+			writeError(w, http.StatusNotFound, err.Error())
+		case errors.Is(err, services.ErrInsufficientCreditLimit):
+			writeError(w, http.StatusConflict, err.Error())
 		case errors.Is(err, services.ErrInsufficientEsimInventory):
 			writeError(w, http.StatusConflict, err.Error())
 		default:
