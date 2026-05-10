@@ -8,7 +8,6 @@ import (
 	"com.jetapcglobal.b2b.com/models"
 	"com.jetapcglobal.b2b.com/repository"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 var (
@@ -19,13 +18,14 @@ var (
 	ErrInvalidEsimInventoryFilter = errors.New("status must be one of: active, all, released, installed")
 	ErrInvalidEsimQuantity        = errors.New("quantity must be greater than zero")
 	ErrInsufficientEsimInventory  = repository.ErrInsufficientEsimInventory
-	ErrInsufficientCreditLimit    = errors.New("insufficient credit limit for requested quantity")
 	ErrCatalogNotFound            = errors.New("catalog not found")
 	ErrTenantEsimNotFound         = repository.ErrTenantEsimNotFound
 	ErrTenantHasNoEsims           = repository.ErrTenantHasNoEsims
 )
 
 const esimUnitPriceUSD = 1.0
+
+type EsimOrderInsufficientWalletBalanceError = repository.InsufficientWalletBalanceError
 
 type EsimService interface {
 	GetInventoryByTenantID(tenantID, filter string) ([]models.Esim, error)
@@ -34,20 +34,17 @@ type EsimService interface {
 }
 
 type esimService struct {
-	repo                  repository.EsimRepository
-	catalogRepo           repository.CatalogRepository
-	tenantCreditLimitRepo repository.TenantCreditLimitRepository
+	repo        repository.EsimRepository
+	catalogRepo repository.CatalogRepository
 }
 
 func NewEsimService(
 	repo repository.EsimRepository,
 	catalogRepo repository.CatalogRepository,
-	tenantCreditLimitRepo repository.TenantCreditLimitRepository,
 ) EsimService {
 	return &esimService{
-		repo:                  repo,
-		catalogRepo:           catalogRepo,
-		tenantCreditLimitRepo: tenantCreditLimitRepo,
+		repo:        repo,
+		catalogRepo: catalogRepo,
 	}
 }
 
@@ -85,30 +82,43 @@ func (s *esimService) OrderEsims(tenantID string, quantity int) ([]models.Esim, 
 		return nil, ErrTenantIDMustBeInt8
 	}
 
-	tenantCommercials, err := s.tenantCreditLimitRepo.GetCurrentByTenantID(tenantIDInt)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrTenantCreditLimitNotFound
-		}
-		return nil, err
-	}
-
-	availableCreditLimit := 0.0
-	if tenantCommercials.CreditLimit != nil {
-		availableCreditLimit = *tenantCommercials.CreditLimit
-	}
-
 	totalOrderPrice := float64(quantity) * esimUnitPriceUSD
-	if totalOrderPrice > availableCreditLimit {
-		return nil, ErrInsufficientCreditLimit
+	orderID := uuid.NewString()
+	transactionID := uuid.NewString()
+	orderRequest := models.OrderRequestObject{
+		Product:          models.OrderProductEsim,
+		TenantID:         tenantIDInt,
+		Quantity:         quantity,
+		SoldPriceUSD:     strconv.FormatFloat(totalOrderPrice, 'f', 2, 64),
+		Currency:         "USD",
+		AssignmentStatus: models.OrderStatusInitiated,
 	}
-
-	esims, err := s.repo.AllocateReleasedInventory(tenantID, quantity)
+	esims, err := s.repo.PurchaseEsims(
+		tenantIDInt,
+		quantity,
+		strconv.FormatFloat(totalOrderPrice, 'f', 2, 64),
+		"USD",
+		orderID,
+		transactionID,
+		orderRequest,
+	)
 	if err != nil {
-		if errors.Is(err, repository.ErrInsufficientEsimInventory) {
+		switch {
+		case errors.Is(err, repository.ErrInsufficientEsimInventory):
 			return nil, ErrInsufficientEsimInventory
+		case errors.Is(err, repository.ErrPackAssignmentTenantWalletNotFound):
+			return nil, ErrTenantWalletNotFound
+		case errors.Is(err, repository.ErrPackAssignmentTenantWalletInactive):
+			return nil, ErrTenantWalletInactive
+		case errors.Is(err, repository.ErrPackAssignmentWalletCurrencyUnsupported):
+			return nil, ErrUnsupportedTenantWalletCurrency
+		default:
+			var balanceErr *repository.InsufficientWalletBalanceError
+			if errors.As(err, &balanceErr) {
+				return nil, err
+			}
+			return nil, err
 		}
-		return nil, err
 	}
 
 	return esims, nil

@@ -15,8 +15,9 @@ const defaultOrderHistoryLimit = 20
 const maxOrderHistoryLimit = 20
 
 type OrderService interface {
-	GetRecentOrdersByTenantID(tenantID int64, limit int) ([]models.OrderListItem, error)
-	GetOrderHistoryByTenantID(tenantID int64, limit int) ([]models.OrderListItem, error)
+	GetRecentOrdersByTenantID(tenantID int64, limit int, productType string) ([]models.OrderListItem, error)
+	GetOrderHistoryByTenantID(tenantID int64, limit int, productType string) ([]models.OrderListItem, error)
+	GetEsimOrderHistoryByTenantID(tenantID int64, limit int) ([]models.OrderListItem, error)
 	GetTodayOrderSummaryByTenantID(tenantID int64, location *time.Location) (*models.OrderTodaySummary, error)
 }
 
@@ -28,12 +29,16 @@ func NewOrderService(repo repository.OrderRepository) OrderService {
 	return &orderService{repo: repo}
 }
 
-func (s *orderService) GetRecentOrdersByTenantID(tenantID int64, limit int) ([]models.OrderListItem, error) {
-	return s.listOrdersByTenantID(tenantID, resolveOrderLimit(limit, defaultRecentOrderLimit))
+func (s *orderService) GetRecentOrdersByTenantID(tenantID int64, limit int, productType string) ([]models.OrderListItem, error) {
+	return s.listOrdersByTenantID(tenantID, resolveOrderLimit(limit, defaultRecentOrderLimit), normalizeOrderProductTypeFilter(productType))
 }
 
-func (s *orderService) GetOrderHistoryByTenantID(tenantID int64, limit int) ([]models.OrderListItem, error) {
-	return s.listOrdersByTenantID(tenantID, resolveOrderLimit(limit, defaultOrderHistoryLimit))
+func (s *orderService) GetOrderHistoryByTenantID(tenantID int64, limit int, productType string) ([]models.OrderListItem, error) {
+	return s.listOrdersByTenantID(tenantID, resolveOrderLimit(limit, defaultOrderHistoryLimit), normalizeOrderProductTypeFilter(productType))
+}
+
+func (s *orderService) GetEsimOrderHistoryByTenantID(tenantID int64, limit int) ([]models.OrderListItem, error) {
+	return s.listOrdersByTenantID(tenantID, resolveOrderLimit(limit, defaultOrderHistoryLimit), models.OrderProductTypeEsim)
 }
 
 func (s *orderService) GetTodayOrderSummaryByTenantID(tenantID int64, location *time.Location) (*models.OrderTodaySummary, error) {
@@ -60,8 +65,8 @@ func (s *orderService) GetTodayOrderSummaryByTenantID(tenantID int64, location *
 	}, nil
 }
 
-func (s *orderService) listOrdersByTenantID(tenantID int64, limit int) ([]models.OrderListItem, error) {
-	orders, err := s.repo.ListPackOrdersByTenantID(tenantID, limit)
+func (s *orderService) listOrdersByTenantID(tenantID int64, limit int, productType string) ([]models.OrderListItem, error) {
+	orders, err := s.repo.ListOrdersByTenantID(tenantID, limit, productType)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +82,7 @@ func (s *orderService) listOrdersByTenantID(tenantID int64, limit int) ([]models
 			OrderID:          order.OrderID,
 			TransactionID:    strings.TrimSpace(requestObject.PaymentTransactionID),
 			TenantID:         order.TenantID,
+			ProductType:      resolveOrderProductType(order.ProductType),
 			CatalogID:        requestObject.CatalogID,
 			PackName:         strings.TrimSpace(requestObject.PackName),
 			PageName:         strings.TrimSpace(requestObject.PageName),
@@ -120,4 +126,20 @@ func firstNonEmptyOrderValue(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func normalizeOrderProductTypeFilter(productType string) string {
+	switch strings.ToLower(strings.TrimSpace(productType)) {
+	case models.OrderProductTypeCatalog:
+		return models.OrderProductTypeCatalog
+	case models.OrderProductTypeEsim:
+		return models.OrderProductTypeEsim
+	default:
+		return ""
+	}
+}
+
+func resolveOrderProductType(productType string) string {
+	productType = normalizeOrderProductTypeFilter(productType)
+	return productType
 }

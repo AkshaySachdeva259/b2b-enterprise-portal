@@ -3,11 +3,12 @@ package repository
 import (
 	"com.jetapcglobal.b2b.com/models"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
 type OrderRepository interface {
-	ListPackOrdersByTenantID(tenantID int64, limit int) ([]models.OrderRecord, error)
+	ListOrdersByTenantID(tenantID int64, limit int, productType string) ([]models.OrderRecord, error)
 	GetCompletedPackOrderSummaryByTenantID(tenantID int64, start time.Time, end time.Time) (float64, int64, error)
 }
 
@@ -19,15 +20,21 @@ func NewOrderRepository(db *gorm.DB) OrderRepository {
 	return &orderRepository{db: db}
 }
 
-func (r *orderRepository) ListPackOrdersByTenantID(tenantID int64, limit int) ([]models.OrderRecord, error) {
+func (r *orderRepository) ListOrdersByTenantID(tenantID int64, limit int, productType string) ([]models.OrderRecord, error) {
 	results := make([]models.OrderRecord, 0)
 
 	query := r.db.
 		Model(&models.OrderRecord{}).
 		Where("tenant_id = ?", tenantID).
-		Where("COALESCE(request_object->>'product', '') = ?", models.OrderProductPack).
 		Order("created_at DESC NULLS LAST").
 		Order("id DESC")
+
+	switch strings.ToLower(strings.TrimSpace(productType)) {
+	case models.OrderProductTypeCatalog:
+		query = query.Where("LOWER(COALESCE(product_type, '')) = ?", models.OrderProductTypeCatalog)
+	case models.OrderProductTypeEsim:
+		query = query.Where("LOWER(COALESCE(product_type, '')) = ?", models.OrderProductTypeEsim)
+	}
 
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -47,7 +54,7 @@ func (r *orderRepository) GetCompletedPackOrderSummaryByTenantID(tenantID int64,
 		Model(&models.OrderRecord{}).
 		Select("COALESCE(SUM(total_amount), 0) AS today_revenue_usd, COUNT(*) AS today_packs_sold").
 		Where("tenant_id = ?", tenantID).
-		Where("COALESCE(request_object->>'product', '') = ?", models.OrderProductPack).
+		Where("LOWER(COALESCE(product_type, '')) = ?", models.OrderProductTypeCatalog).
 		Where("LOWER(COALESCE(status, '')) = ?", models.OrderStatusCompleted).
 		Where("is_active = ?", true).
 		Where("created_at >= ? AND created_at < ?", start, end).

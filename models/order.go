@@ -6,17 +6,21 @@ import (
 )
 
 const (
-	OrderProductPack     = "PACK"
-	OrderStatusInitiated = "initiated"
-	OrderStatusPending   = "pending"
-	OrderStatusCompleted = "completed"
-	OrderStatusFailed    = "failed"
+	OrderProductPack        = "PACK"
+	OrderProductEsim        = "ESIM"
+	OrderProductTypeCatalog = "catalog"
+	OrderProductTypeEsim    = "esim"
+	OrderStatusInitiated    = "initiated"
+	OrderStatusPending      = "pending"
+	OrderStatusCompleted    = "completed"
+	OrderStatusFailed       = "failed"
 )
 
 type OrderRecord struct {
 	ID            int64           `gorm:"column:id;primaryKey"                  json:"id"`
 	TenantID      int64           `gorm:"column:tenant_id;type:bigint;index"    json:"tenant_id"`
 	OrderID       string          `gorm:"column:order_id"                       json:"order_id"`
+	ProductType   string          `gorm:"column:product_type"                   json:"product_type"`
 	TotalAmount   *float64        `gorm:"column:total_amount;type:numeric(18,2)" json:"total_amount,omitempty"`
 	RequestObject json.RawMessage `gorm:"column:request_object;type:jsonb"      json:"request_object,omitempty"`
 	Status        string          `gorm:"column:status"                         json:"status"`
@@ -35,6 +39,7 @@ type OrderRequestObject struct {
 	CatalogID            string `json:"catalog_id,omitempty"`
 	PackName             string `json:"pack_name,omitempty"`
 	PageName             string `json:"page_name,omitempty"`
+	Quantity             int    `json:"quantity,omitempty"`
 	ReceiverUserID       string `json:"receiver_user_id,omitempty"`
 	OriginalPriceUSD     string `json:"original_price_usd,omitempty"`
 	SoldPriceUSD         string `json:"sold_price_usd,omitempty"`
@@ -54,6 +59,7 @@ type OrderListItem struct {
 	OrderID          string     `json:"order_id"`
 	TransactionID    string     `json:"transaction_id,omitempty"`
 	TenantID         int64      `json:"tenant_id"`
+	ProductType      string     `json:"product_type,omitempty"`
 	CatalogID        string     `json:"catalog_id,omitempty"`
 	PackName         string     `json:"pack_name,omitempty"`
 	PageName         string     `json:"page_name,omitempty"`

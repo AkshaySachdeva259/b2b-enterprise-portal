@@ -88,13 +88,18 @@ func (c *esimController) OrderEsims(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, services.ErrTenantIDRequired), errors.Is(err, services.ErrInvalidEsimQuantity), errors.Is(err, services.ErrTenantIDMustBeInt8):
 			writeError(w, http.StatusBadRequest, err.Error())
-		case errors.Is(err, services.ErrTenantCreditLimitNotFound):
+		case errors.Is(err, services.ErrTenantWalletNotFound):
 			writeError(w, http.StatusNotFound, err.Error())
-		case errors.Is(err, services.ErrInsufficientCreditLimit):
+		case errors.Is(err, services.ErrTenantWalletInactive), errors.Is(err, services.ErrUnsupportedTenantWalletCurrency):
 			writeError(w, http.StatusConflict, err.Error())
 		case errors.Is(err, services.ErrInsufficientEsimInventory):
 			writeError(w, http.StatusConflict, err.Error())
 		default:
+			var balanceErr *services.EsimOrderInsufficientWalletBalanceError
+			if errors.As(err, &balanceErr) {
+				writeError(w, http.StatusConflict, err.Error())
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "failed to order esims")
 		}
 		return
