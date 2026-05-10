@@ -23,7 +23,7 @@ type CreditLedgerTransaction struct {
 	TenantID          int64      `gorm:"column:tenant_id;type:bigint;index"       json:"tenant_id"`
 	Currency          *string    `gorm:"column:currency"                          json:"currency,omitempty"`
 	TransactionAmount *float64   `gorm:"column:transaction_amount;type:numeric(18,2)" json:"transaction_amount,omitempty"`
-	Type              *string    `gorm:"column:type"                              json:"type,omitempty"`
+	Status            *string    `gorm:"column:status"                            json:"status,omitempty"`
 	Product           *string    `gorm:"column:product"                           json:"product,omitempty"`
 	OrderID           *string    `gorm:"column:order_id"                          json:"order_id,omitempty"`
 	TransactionType   *string    `gorm:"column:transaction_type"                  json:"transaction_type,omitempty"`
@@ -40,7 +40,7 @@ type WalletTransaction struct {
 	ID              int64      `json:"id"`
 	Currency        *string    `json:"currency,omitempty"`
 	Amount          float64    `json:"amount"`
-	Type            *string    `json:"type,omitempty"`
+	Status          *string    `json:"status,omitempty"`
 	Product         *string    `json:"product,omitempty"`
 	OrderID         *string    `json:"order_id,omitempty"`
 	TransactionType *string    `json:"transaction_type,omitempty"`

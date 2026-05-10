@@ -19,6 +19,8 @@ type packAssignmentController struct {
 type assignPackRequest struct {
 	TenantID       string `json:"tenant_id"`
 	ReceiverUserID string `json:"receiver_user_id"`
+	ReceiverID     string `json:"receiver_id"`
+	ReceiverEmail  string `json:"receiver_email"`
 	CatalogID      int64  `json:"catalog_id"`
 }
 
@@ -36,7 +38,8 @@ func (c *packAssignmentController) AssignPack(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	result, err := c.svc.AssignPack(req.TenantID, req.ReceiverUserID, req.CatalogID)
+	receiverUserID := firstNonEmpty(req.ReceiverUserID, req.ReceiverID, req.ReceiverEmail)
+	result, err := c.svc.AssignPack(req.TenantID, receiverUserID, req.CatalogID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrTenantIDRequired):
