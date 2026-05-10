@@ -30,7 +30,7 @@ const esimUnitPriceUSD = 1.0
 type EsimService interface {
 	GetInventoryByTenantID(tenantID, filter string) ([]models.Esim, error)
 	OrderEsims(tenantID string, quantity int) ([]models.Esim, error)
-	AssignCatalog(tenantID string, receiverUserID string, catalogID int64, iccid string, autoAllocateEsim bool) (*models.Esim, *models.B2BAllocation, bool, error)
+	AssignCatalog(tenantID string, receiverUserID string, catalogID string, iccid string, autoAllocateEsim bool) (*models.Esim, *models.B2BAllocation, bool, error)
 }
 
 type esimService struct {
@@ -114,7 +114,7 @@ func (s *esimService) OrderEsims(tenantID string, quantity int) ([]models.Esim, 
 	return esims, nil
 }
 
-func (s *esimService) AssignCatalog(tenantID string, receiverUserID string, catalogID int64, iccid string, autoAllocateEsim bool) (*models.Esim, *models.B2BAllocation, bool, error) {
+func (s *esimService) AssignCatalog(tenantID string, receiverUserID string, catalogID string, iccid string, autoAllocateEsim bool) (*models.Esim, *models.B2BAllocation, bool, error) {
 	tenantID = strings.TrimSpace(tenantID)
 	if tenantID == "" {
 		return nil, nil, false, ErrTenantIDRequired
@@ -125,7 +125,7 @@ func (s *esimService) AssignCatalog(tenantID string, receiverUserID string, cata
 		return nil, nil, false, ErrReceiverUserIDRequired
 	}
 
-	if catalogID <= 0 {
+	if strings.TrimSpace(catalogID) == "" {
 		return nil, nil, false, ErrCatalogIDRequired
 	}
 

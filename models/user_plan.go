@@ -16,7 +16,7 @@ type UserPlan struct {
 	UserID        string     `gorm:"column:user_id"                 json:"user_id"`
 	ICCID         string     `gorm:"column:iccid"                   json:"iccid"`
 	Vendor        string     `gorm:"column:vendor"                  json:"vendor"`
-	CatalogID     int64      `gorm:"column:catalog_id"              json:"catalog_id"`
+	CatalogID     string     `gorm:"column:catalog_id"              json:"catalog_id"`
 	AppliedPlanID string     `gorm:"column:applied_plan_id"         json:"applied_plan_id"`
 	PlanStatus    string     `gorm:"column:plan_status"             json:"plan_status"`
 	RowID         int64      `gorm:"column:rowid"                   json:"rowid"`

@@ -9,9 +9,9 @@ import (
 
 type CatalogRepository interface {
 	ListPacks(pageName string, limit int) ([]models.Catalog, error)
-	GetByCatalogID(catalogID int64) (*models.Catalog, error)
-	GetByCatalogIDs(catalogIDs []int64) ([]models.Catalog, error)
-	ExistsByCatalogID(catalogID int64) (bool, error)
+	GetByCatalogID(catalogID string) (*models.Catalog, error)
+	GetByCatalogIDs(catalogIDs []string) ([]models.Catalog, error)
+	ExistsByCatalogID(catalogID string) (bool, error)
 }
 
 type catalogRepository struct {
@@ -40,7 +40,7 @@ func (r *catalogRepository) ListPacks(pageName string, limit int) ([]models.Cata
 	return results, err
 }
 
-func (r *catalogRepository) GetByCatalogID(catalogID int64) (*models.Catalog, error) {
+func (r *catalogRepository) GetByCatalogID(catalogID string) (*models.Catalog, error) {
 	var result models.Catalog
 	err := r.db.
 		Where("catalog_id = ? AND deleted_at IS NULL AND visibility = ?", catalogID, true).
@@ -55,7 +55,7 @@ func (r *catalogRepository) GetByCatalogID(catalogID int64) (*models.Catalog, er
 	return &result, nil
 }
 
-func (r *catalogRepository) GetByCatalogIDs(catalogIDs []int64) ([]models.Catalog, error) {
+func (r *catalogRepository) GetByCatalogIDs(catalogIDs []string) ([]models.Catalog, error) {
 	results := make([]models.Catalog, 0)
 	if len(catalogIDs) == 0 {
 		return results, nil
@@ -68,7 +68,7 @@ func (r *catalogRepository) GetByCatalogIDs(catalogIDs []int64) ([]models.Catalo
 	return results, err
 }
 
-func (r *catalogRepository) ExistsByCatalogID(catalogID int64) (bool, error) {
+func (r *catalogRepository) ExistsByCatalogID(catalogID string) (bool, error) {
 	var count int64
 	err := r.db.
 		Model(&models.Catalog{}).

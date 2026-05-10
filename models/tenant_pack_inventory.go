@@ -4,7 +4,7 @@ import "time"
 
 type TenantPackInventoryItem struct {
 	AllocationID     int64      `json:"allocation_id"`
-	CatalogID        int64      `json:"catalog_id"`
+	CatalogID        string     `json:"catalog_id"`
 	PackName         string     `json:"pack_name"`
 	PageName         string     `json:"page_name"`
 	CountryName      string     `json:"country_name"`

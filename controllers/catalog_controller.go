@@ -51,13 +51,7 @@ func (c *catalogController) GetPackDetail(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	catalogID, err := strconv.ParseInt(catalogIDParam, 10, 64)
-	if err != nil || catalogID <= 0 {
-		writeError(w, http.StatusBadRequest, "catalog_id must be a valid int64")
-		return
-	}
-
-	catalog, err := c.svc.GetPackDetail(catalogID)
+	catalog, err := c.svc.GetPackDetail(catalogIDParam)
 	if err != nil {
 		if errors.Is(err, services.ErrPackCatalogNotFound) {
 			writeError(w, http.StatusNotFound, "catalog not found")

@@ -16,7 +16,7 @@ type CartRepository interface {
 	Create(userID string, currency string) (*models.Cart, error)
 	UpdateCurrency(cartID uuid.UUID, currency string) error
 	ListItemsByCartID(cartID uuid.UUID) ([]models.CartItem, error)
-	DeleteItemsByCatalogIDs(cartID uuid.UUID, catalogIDs []int64) error
+	DeleteItemsByCatalogIDs(cartID uuid.UUID, catalogIDs []string) error
 	ReplaceItems(cartID uuid.UUID, items []models.CartItem) error
 }
 
@@ -80,7 +80,7 @@ func (r *cartRepository) ListItemsByCartID(cartID uuid.UUID) ([]models.CartItem,
 	return items, err
 }
 
-func (r *cartRepository) DeleteItemsByCatalogIDs(cartID uuid.UUID, catalogIDs []int64) error {
+func (r *cartRepository) DeleteItemsByCatalogIDs(cartID uuid.UUID, catalogIDs []string) error {
 	if len(catalogIDs) == 0 {
 		return nil
 	}

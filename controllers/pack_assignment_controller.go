@@ -21,7 +21,7 @@ type assignPackRequest struct {
 	ReceiverUserID string `json:"receiver_user_id"`
 	ReceiverID     string `json:"receiver_id"`
 	ReceiverEmail  string `json:"receiver_email"`
-	CatalogID      int64  `json:"catalog_id"`
+	CatalogID      string `json:"catalog_id"`
 }
 
 func NewPackAssignmentController(svc services.PackAssignmentService) PackAssignmentController {

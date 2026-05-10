@@ -11,7 +11,7 @@ type PackAssignmentResult struct {
 	OrderStatus         string             `json:"order_status"`
 	TenantID            int64              `json:"tenant_id"`
 	ReceiverUserID      string             `json:"receiver_user_id"`
-	CatalogID           int64              `json:"catalog_id"`
+	CatalogID           string             `json:"catalog_id"`
 	InvoiceID           string             `json:"invoice_id"`
 	RequestID           string             `json:"request_id"`
 	TransactionID       string             `json:"transaction_id"`

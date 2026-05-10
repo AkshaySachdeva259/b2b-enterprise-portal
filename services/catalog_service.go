@@ -17,7 +17,7 @@ var ErrPackCatalogNotFound = errors.New("catalog not found")
 
 type CatalogService interface {
 	ListPacks(pageName string, limit int) ([]models.PackSummary, error)
-	GetPackDetail(catalogID int64) (*models.PackDetail, error)
+	GetPackDetail(catalogID string) (*models.PackDetail, error)
 }
 
 type catalogService struct {
@@ -68,7 +68,7 @@ func (s *catalogService) ListPacks(pageName string, limit int) ([]models.PackSum
 	return results, nil
 }
 
-func (s *catalogService) GetPackDetail(catalogID int64) (*models.PackDetail, error) {
+func (s *catalogService) GetPackDetail(catalogID string) (*models.PackDetail, error) {
 	catalog, err := s.repo.GetByCatalogID(catalogID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

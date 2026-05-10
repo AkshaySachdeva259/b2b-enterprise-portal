@@ -26,15 +26,15 @@ type CartItem struct {
 	UpdatedAt time.Time  `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 	DeletedAt *time.Time `gorm:"column:deleted_at"                json:"deleted_at,omitempty"`
 	CartID    uuid.UUID  `gorm:"column:cart_id;type:uuid;index"   json:"cart_id"`
-	CatalogID int64      `gorm:"column:catalog_id;index"          json:"catalog_id"`
+	CatalogID string     `gorm:"column:catalog_id;index"          json:"catalog_id"`
 	Quantity  int        `gorm:"column:quantity"                  json:"quantity"`
 }
 
 func (CartItem) TableName() string { return "tbl_cart_items" }
 
 type CartUpdateItemInput struct {
-	CatalogID int64 `json:"catalog_id"`
-	Quantity  int   `json:"quantity"`
+	CatalogID string `json:"catalog_id"`
+	Quantity  int    `json:"quantity"`
 }
 
 type CartPriceBreakdown struct {
@@ -49,7 +49,7 @@ type CartPriceBreakdown struct {
 
 type CartLineItem struct {
 	ID        uuid.UUID          `json:"id"`
-	CatalogID int64              `json:"catalog_id"`
+	CatalogID string             `json:"catalog_id"`
 	Quantity  int                `json:"quantity"`
 	Catalog   Catalog            `json:"catalog"`
 	Pricing   CartPriceBreakdown `json:"pricing"`

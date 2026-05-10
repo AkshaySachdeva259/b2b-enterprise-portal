@@ -28,7 +28,7 @@ type updateCartRequest struct {
 type deleteCartItemsRequest struct {
 	UserID     string  `json:"user_id"`
 	Currency   string  `json:"currency,omitempty"`
-	CatalogIDs []int64 `json:"catalog_ids"`
+	CatalogIDs []string `json:"catalog_ids"`
 }
 
 func NewCartController(svc services.CartService) CartController {

@@ -32,7 +32,7 @@ func (OrderRecord) TableName() string { return "tbl_order_record" }
 type OrderRequestObject struct {
 	Product              string `json:"product,omitempty"`
 	TenantID             int64  `json:"tenant_id,omitempty"`
-	CatalogID            int64  `json:"catalog_id,omitempty"`
+	CatalogID            string `json:"catalog_id,omitempty"`
 	PackName             string `json:"pack_name,omitempty"`
 	PageName             string `json:"page_name,omitempty"`
 	ReceiverUserID       string `json:"receiver_user_id,omitempty"`
@@ -54,7 +54,7 @@ type OrderListItem struct {
 	OrderID          string     `json:"order_id"`
 	TransactionID    string     `json:"transaction_id,omitempty"`
 	TenantID         int64      `json:"tenant_id"`
-	CatalogID        int64      `json:"catalog_id,omitempty"`
+	CatalogID        string     `json:"catalog_id,omitempty"`
 	PackName         string     `json:"pack_name,omitempty"`
 	PageName         string     `json:"page_name,omitempty"`
 	ReceiverUserID   string     `json:"receiver_user_id,omitempty"`
