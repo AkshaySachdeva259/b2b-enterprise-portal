@@ -35,7 +35,7 @@ type orderEsimResponse struct {
 type assignCatalogRequest struct {
 	TenantID         string `json:"tenant_id"`
 	ReceiverUserID   string `json:"receiver_user_id"`
-	CatalogID        int64  `json:"catalog_id"`
+	CatalogID        string `json:"catalog_id"`
 	ICCID            string `json:"iccid,omitempty"`
 	AutoAllocateEsim bool   `json:"auto_allocate_esim,omitempty"`
 }
@@ -43,7 +43,7 @@ type assignCatalogRequest struct {
 type assignCatalogResponse struct {
 	TenantID          string                `json:"tenant_id"`
 	ReceiverUserID    string                `json:"receiver_user_id"`
-	CatalogID         int64                 `json:"catalog_id"`
+	CatalogID         string                `json:"catalog_id"`
 	ICCID             string                `json:"iccid"`
 	AutoAllocatedEsim bool                  `json:"auto_allocated_esim"`
 	Esim              *models.Esim          `json:"esim"`

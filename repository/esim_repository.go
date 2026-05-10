@@ -36,8 +36,8 @@ type EsimRepository interface {
 	GetInventoryByTenantID(tenantID string, filter models.EsimInventoryFilter) ([]models.Esim, error)
 	AllocateReleasedInventory(tenantID string, quantity int) ([]models.Esim, error)
 	PurchaseEsims(tenantID int64, quantity int, amountUSD string, currency string, orderID string, transactionID string, orderRequest models.OrderRequestObject) ([]models.Esim, error)
-	AssignCatalogToEsim(tenantID string, receiverUserID string, catalogID int64, iccid string, autoAllocateEsim bool, invoiceID string, requestID string) (*models.Esim, *models.B2BAllocation, bool, error)
-	PurchaseAndAssignCatalog(tenantID int64, receiverUserID string, catalogID int64, amountUSD string, currency string, orderID string, invoiceID string, requestID string, transactionID string, orderRequest models.OrderRequestObject) (*models.PackAssignmentResult, error)
+	AssignCatalogToEsim(tenantID string, receiverUserID string, catalogID string, iccid string, autoAllocateEsim bool, invoiceID string, requestID string) (*models.Esim, *models.B2BAllocation, bool, error)
+	PurchaseAndAssignCatalog(tenantID int64, receiverUserID string, catalogID string, amountUSD string, currency string, orderID string, invoiceID string, requestID string, transactionID string, orderRequest models.OrderRequestObject) (*models.PackAssignmentResult, error)
 }
 
 type esimRepository struct {
@@ -113,7 +113,7 @@ func (r *esimRepository) AllocateReleasedInventory(tenantID string, quantity int
 	return allocated, nil
 }
 
-func (r *esimRepository) AssignCatalogToEsim(tenantID string, receiverUserID string, catalogID int64, iccid string, autoAllocateEsim bool, invoiceID string, requestID string) (*models.Esim, *models.B2BAllocation, bool, error) {
+func (r *esimRepository) AssignCatalogToEsim(tenantID string, receiverUserID string, catalogID string, iccid string, autoAllocateEsim bool, invoiceID string, requestID string) (*models.Esim, *models.B2BAllocation, bool, error) {
 	var selectedEsim models.Esim
 	autoAllocatedEsim := false
 
@@ -375,7 +375,7 @@ func (r *esimRepository) PurchaseEsims(tenantID int64, quantity int, amountUSD s
 	return allocated, nil
 }
 
-func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID string, catalogID int64, amountUSD string, currency string, orderID string, invoiceID string, requestID string, transactionID string, orderRequest models.OrderRequestObject) (*models.PackAssignmentResult, error) {
+func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID string, catalogID string, amountUSD string, currency string, orderID string, invoiceID string, requestID string, transactionID string, orderRequest models.OrderRequestObject) (*models.PackAssignmentResult, error) {
 	receiverUserID = strings.TrimSpace(receiverUserID)
 
 	result := &models.PackAssignmentResult{
@@ -814,7 +814,7 @@ func findTenantInventoryEsimTx(tx *gorm.DB, tenantID string) (*models.Esim, erro
 	return &esim, nil
 }
 
-func findUnallocatedAllocationTx(tx *gorm.DB, tenantID string, catalogID int64) (*models.B2BAllocation, error) {
+func findUnallocatedAllocationTx(tx *gorm.DB, tenantID string, catalogID string) (*models.B2BAllocation, error) {
 	var allocation models.B2BAllocation
 	err := tx.
 		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
@@ -832,7 +832,7 @@ func findUnallocatedAllocationTx(tx *gorm.DB, tenantID string, catalogID int64) 
 	return &allocation, nil
 }
 
-func (r *esimRepository) assignUnallocatedPackWithoutPurchase(tenantID int64, receiverUserID string, catalogID int64) (*models.PackAssignmentResult, bool, error) {
+func (r *esimRepository) assignUnallocatedPackWithoutPurchase(tenantID int64, receiverUserID string, catalogID string) (*models.PackAssignmentResult, bool, error) {
 	tenantIDString := strconv.FormatInt(tenantID, 10)
 	systemUser := "SYSTEM"
 	result := &models.PackAssignmentResult{
@@ -982,7 +982,7 @@ func (r *esimRepository) createUserPlanEntryTx(
 	tx *gorm.DB,
 	esim *models.Esim,
 	receiverUserID string,
-	catalogID int64,
+	catalogID string,
 	orderID string,
 	transactionID string,
 	systemUser string,
@@ -998,7 +998,7 @@ func (r *esimRepository) createUserPlanEntryTx(
 	}
 
 	recordID := time.Now().UnixNano()
-	appliedPlanID := strconv.FormatInt(catalogID, 10)
+	appliedPlanID := catalogID
 	paymentIntent := strings.TrimSpace(orderID)
 	if paymentIntent == "" {
 		paymentIntent = strings.TrimSpace(transactionID)

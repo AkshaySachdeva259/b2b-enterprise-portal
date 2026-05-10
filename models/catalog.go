@@ -10,7 +10,7 @@ import (
 
 type Catalog struct {
 	ID              uuid.UUID       `gorm:"column:id;primaryKey;type:uuid"      json:"id"`
-	CatalogID       *int64          `gorm:"column:catalog_id"                   json:"catalog_id,omitempty"`
+	CatalogID       *string         `gorm:"column:catalog_id"                   json:"catalog_id,omitempty"`
 	CreatedAt       time.Time       `gorm:"column:created_at;autoCreateTime"    json:"created_at"`
 	UpdatedAt       time.Time       `gorm:"column:updated_at;autoUpdateTime"    json:"updated_at"`
 	DeletedAt       *time.Time      `gorm:"column:deleted_at"                   json:"deleted_at,omitempty"`

@@ -11,7 +11,7 @@ type DestinationOption struct {
 }
 
 type PackSummary struct {
-	ID             int64   `json:"id"`
+	ID             string  `json:"id"`
 	CountryName    string  `json:"country_name"`
 	DataInGB       float64 `json:"data_in_gb"`
 	ValidityInDays int64   `json:"validity_in_days"`
@@ -19,7 +19,7 @@ type PackSummary struct {
 }
 
 type PackDetail struct {
-	ID                 int64           `json:"id"`
+	ID                 string          `json:"id"`
 	CountryName        string          `json:"country_name"`
 	Vendor             string          `json:"vendor"`
 	PackageType        string          `json:"package_type"`

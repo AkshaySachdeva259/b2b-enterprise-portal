@@ -25,7 +25,7 @@ var (
 type CartService interface {
 	LoadCart(userID string, currency string) (*models.CartDetail, error)
 	UpdateCart(userID string, currency string, items []models.CartUpdateItemInput) (*models.CartDetail, error)
-	DeleteCartItems(userID string, currency string, catalogIDs []int64) (*models.CartDetail, error)
+	DeleteCartItems(userID string, currency string, catalogIDs []string) (*models.CartDetail, error)
 }
 
 type cartService struct {
@@ -144,7 +144,7 @@ func (s *cartService) UpdateCart(userID string, currency string, items []models.
 	return s.buildCartDetailFromCatalogs(cart, storedItems, catalogs)
 }
 
-func (s *cartService) DeleteCartItems(userID string, currency string, catalogIDs []int64) (*models.CartDetail, error) {
+func (s *cartService) DeleteCartItems(userID string, currency string, catalogIDs []string) (*models.CartDetail, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
 		return nil, ErrCartUserIDRequired
@@ -190,12 +190,12 @@ func (s *cartService) getOrCreateCart(userID string, currency string) (*models.C
 	return s.repo.Create(userID, resolveCartCurrency("", currency))
 }
 
-func (s *cartService) fetchCatalogsForCartItems(items []models.CartItem) (map[int64]models.Catalog, error) {
+func (s *cartService) fetchCatalogsForCartItems(items []models.CartItem) (map[string]models.Catalog, error) {
 	if len(items) == 0 {
-		return map[int64]models.Catalog{}, nil
+		return map[string]models.Catalog{}, nil
 	}
 
-	catalogIDs := make([]int64, 0, len(items))
+	catalogIDs := make([]string, 0, len(items))
 	for _, item := range items {
 		catalogIDs = append(catalogIDs, item.CatalogID)
 	}
@@ -203,9 +203,9 @@ func (s *cartService) fetchCatalogsForCartItems(items []models.CartItem) (map[in
 	return s.fetchCatalogsByIDs(catalogIDs)
 }
 
-func (s *cartService) fetchCatalogsByIDs(catalogIDs []int64) (map[int64]models.Catalog, error) {
+func (s *cartService) fetchCatalogsByIDs(catalogIDs []string) (map[string]models.Catalog, error) {
 	if len(catalogIDs) == 0 {
-		return map[int64]models.Catalog{}, nil
+		return map[string]models.Catalog{}, nil
 	}
 
 	uniqueIDs := uniqueCatalogIDs(catalogIDs)
@@ -214,7 +214,7 @@ func (s *cartService) fetchCatalogsByIDs(catalogIDs []int64) (map[int64]models.C
 		return nil, err
 	}
 
-	catalogMap := make(map[int64]models.Catalog, len(catalogs))
+	catalogMap := make(map[string]models.Catalog, len(catalogs))
 	for _, catalog := range catalogs {
 		if catalog.CatalogID == nil {
 			continue
@@ -229,7 +229,7 @@ func (s *cartService) fetchCatalogsByIDs(catalogIDs []int64) (map[int64]models.C
 	return catalogMap, nil
 }
 
-func (s *cartService) ensureCurrencyAvailable(catalogs map[int64]models.Catalog, currency string) error {
+func (s *cartService) ensureCurrencyAvailable(catalogs map[string]models.Catalog, currency string) error {
 	for _, catalog := range catalogs {
 		if _, err := extractCatalogPrice(catalog, currency); err != nil {
 			if errors.Is(err, errCatalogPriceNotFound) || errors.Is(err, errInvalidCatalogPriceAmount) {
@@ -242,7 +242,7 @@ func (s *cartService) ensureCurrencyAvailable(catalogs map[int64]models.Catalog,
 	return nil
 }
 
-func (s *cartService) buildCartDetailFromCatalogs(cart *models.Cart, items []models.CartItem, catalogs map[int64]models.Catalog) (*models.CartDetail, error) {
+func (s *cartService) buildCartDetailFromCatalogs(cart *models.Cart, items []models.CartItem, catalogs map[string]models.Catalog) (*models.CartDetail, error) {
 	if catalogs == nil {
 		var err error
 		catalogs, err = s.fetchCatalogsForCartItems(items)
@@ -343,11 +343,11 @@ func normalizeCartItems(items []models.CartUpdateItemInput) ([]models.CartUpdate
 		return []models.CartUpdateItemInput{}, nil
 	}
 
-	quantitiesByCatalogID := make(map[int64]int, len(items))
-	orderedCatalogIDs := make([]int64, 0, len(items))
+	quantitiesByCatalogID := make(map[string]int, len(items))
+	orderedCatalogIDs := make([]string, 0, len(items))
 
 	for _, item := range items {
-		if item.CatalogID <= 0 {
+		if strings.TrimSpace(item.CatalogID) == "" {
 			return nil, ErrCartCatalogIDRequired
 		}
 		if item.Quantity <= 0 {
@@ -371,16 +371,16 @@ func normalizeCartItems(items []models.CartUpdateItemInput) ([]models.CartUpdate
 	return normalized, nil
 }
 
-func normalizeCartCatalogIDs(catalogIDs []int64) ([]int64, error) {
+func normalizeCartCatalogIDs(catalogIDs []string) ([]string, error) {
 	if len(catalogIDs) == 0 {
 		return nil, ErrCartCatalogIDsRequired
 	}
 
-	uniqueCatalogIDs := make([]int64, 0, len(catalogIDs))
-	seen := make(map[int64]struct{}, len(catalogIDs))
+	uniqueIDs := make([]string, 0, len(catalogIDs))
+	seen := make(map[string]struct{}, len(catalogIDs))
 
 	for _, catalogID := range catalogIDs {
-		if catalogID <= 0 {
+		if strings.TrimSpace(catalogID) == "" {
 			return nil, ErrCartCatalogIDRequired
 		}
 		if _, exists := seen[catalogID]; exists {
@@ -388,23 +388,23 @@ func normalizeCartCatalogIDs(catalogIDs []int64) ([]int64, error) {
 		}
 
 		seen[catalogID] = struct{}{}
-		uniqueCatalogIDs = append(uniqueCatalogIDs, catalogID)
+		uniqueIDs = append(uniqueIDs, catalogID)
 	}
 
-	return uniqueCatalogIDs, nil
+	return uniqueIDs, nil
 }
 
-func cartItemCatalogIDs(items []models.CartUpdateItemInput) []int64 {
-	catalogIDs := make([]int64, 0, len(items))
+func cartItemCatalogIDs(items []models.CartUpdateItemInput) []string {
+	catalogIDs := make([]string, 0, len(items))
 	for _, item := range items {
 		catalogIDs = append(catalogIDs, item.CatalogID)
 	}
 	return catalogIDs
 }
 
-func uniqueCatalogIDs(catalogIDs []int64) []int64 {
-	seen := make(map[int64]struct{}, len(catalogIDs))
-	unique := make([]int64, 0, len(catalogIDs))
+func uniqueCatalogIDs(catalogIDs []string) []string {
+	seen := make(map[string]struct{}, len(catalogIDs))
+	unique := make([]string, 0, len(catalogIDs))
 
 	for _, catalogID := range catalogIDs {
 		if _, exists := seen[catalogID]; exists {

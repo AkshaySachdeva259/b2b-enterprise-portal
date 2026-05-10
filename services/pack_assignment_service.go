@@ -19,7 +19,7 @@ var ErrCatalogUSDPriceUnavailable = errors.New("catalog usd price is not availab
 type InsufficientWalletBalanceError = repository.InsufficientWalletBalanceError
 
 type PackAssignmentService interface {
-	AssignPack(tenantID string, receiverUserID string, catalogID int64) (*models.PackAssignmentResult, error)
+	AssignPack(tenantID string, receiverUserID string, catalogID string) (*models.PackAssignmentResult, error)
 }
 
 type packAssignmentService struct {
@@ -34,7 +34,7 @@ func NewPackAssignmentService(esimRepo repository.EsimRepository, catalogRepo re
 	}
 }
 
-func (s *packAssignmentService) AssignPack(tenantID string, receiverUserID string, catalogID int64) (*models.PackAssignmentResult, error) {
+func (s *packAssignmentService) AssignPack(tenantID string, receiverUserID string, catalogID string) (*models.PackAssignmentResult, error) {
 	tenantID = strings.TrimSpace(tenantID)
 	if tenantID == "" {
 		return nil, ErrTenantIDRequired
@@ -42,7 +42,7 @@ func (s *packAssignmentService) AssignPack(tenantID string, receiverUserID strin
 
 	receiverUserID = strings.TrimSpace(receiverUserID)
 
-	if catalogID <= 0 {
+	if strings.TrimSpace(catalogID) == "" {
 		return nil, ErrCatalogIDRequired
 	}
 
