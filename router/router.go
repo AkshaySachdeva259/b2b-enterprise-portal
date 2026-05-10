@@ -24,7 +24,7 @@ func New(db *gorm.DB) http.Handler {
 
 	destSvc := services.NewDestinationService(destRepo)
 	catalogSvc := services.NewCatalogService(catalogRepo, destRepo)
-	esimSvc := services.NewEsimService(esimRepo, catalogRepo, tenantCreditLimitRepo)
+	esimSvc := services.NewEsimService(esimRepo, catalogRepo)
 	cartSvc := services.NewCartService(cartRepo, catalogRepo)
 	tenantWalletSvc := services.NewTenantWalletService(tenantWalletRepo)
 	packInventorySvc := services.NewPackInventoryService(packInventoryRepo)
@@ -56,6 +56,7 @@ func New(db *gorm.DB) http.Handler {
 
 	api.HandleFunc("/tenants/{tenant_id}/orders", orderCtrl.GetOrderHistoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/orders/recent", orderCtrl.GetRecentOrdersByTenantID).Methods(http.MethodGet)
+	api.HandleFunc("/tenants/{tenant_id}/orders/esims", orderCtrl.GetEsimOrderHistoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/orders/summary", orderCtrl.GetTodayOrderSummaryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/packs/inventory", packInventoryCtrl.ListByTenantID).Methods(http.MethodGet)
 

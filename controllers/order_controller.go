@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"com.jetapcglobal.b2b.com/services"
@@ -12,6 +13,7 @@ import (
 type OrderController interface {
 	GetRecentOrdersByTenantID(w http.ResponseWriter, r *http.Request)
 	GetOrderHistoryByTenantID(w http.ResponseWriter, r *http.Request)
+	GetEsimOrderHistoryByTenantID(w http.ResponseWriter, r *http.Request)
 	GetTodayOrderSummaryByTenantID(w http.ResponseWriter, r *http.Request)
 }
 
@@ -29,7 +31,12 @@ func (c *orderController) GetRecentOrdersByTenantID(w http.ResponseWriter, r *ht
 		return
 	}
 
-	orders, err := c.svc.GetRecentOrdersByTenantID(tenantID, limit)
+	productType, ok := parseOrderProductTypeFilter(w, r)
+	if !ok {
+		return
+	}
+
+	orders, err := c.svc.GetRecentOrdersByTenantID(tenantID, limit, productType)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch recent orders")
 		return
@@ -44,9 +51,29 @@ func (c *orderController) GetOrderHistoryByTenantID(w http.ResponseWriter, r *ht
 		return
 	}
 
-	orders, err := c.svc.GetOrderHistoryByTenantID(tenantID, limit)
+	productType, ok := parseOrderProductTypeFilter(w, r)
+	if !ok {
+		return
+	}
+
+	orders, err := c.svc.GetOrderHistoryByTenantID(tenantID, limit, productType)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch order history")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, Response{Data: orders, Message: "success"})
+}
+
+func (c *orderController) GetEsimOrderHistoryByTenantID(w http.ResponseWriter, r *http.Request) {
+	tenantID, limit, ok := parseTenantIDAndOrderLimit(w, r)
+	if !ok {
+		return
+	}
+
+	orders, err := c.svc.GetEsimOrderHistoryByTenantID(tenantID, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch esim order history")
 		return
 	}
 
@@ -114,4 +141,15 @@ func resolveOrderSummaryLocation(timezoneName string) (*time.Location, error) {
 		return time.Local, nil
 	}
 	return time.LoadLocation(timezoneName)
+}
+
+func parseOrderProductTypeFilter(w http.ResponseWriter, r *http.Request) (string, bool) {
+	value := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("product_type")))
+	switch value {
+	case "", "catalog", "esim":
+		return value, true
+	default:
+		writeError(w, http.StatusBadRequest, "product_type must be one of: catalog, esim")
+		return "", false
+	}
 }
