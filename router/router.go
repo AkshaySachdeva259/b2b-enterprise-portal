@@ -43,22 +43,27 @@ func New(db *gorm.DB) http.Handler {
 	api := r.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/pages", destCtrl.GetDestinations).Methods(http.MethodGet)
 	api.HandleFunc("/destinations", destCtrl.GetDestinations).Methods(http.MethodGet)
-	api.HandleFunc("/catalog/assign", packAssignmentCtrl.AssignPack).Methods(http.MethodPost)
 	api.HandleFunc("/catalog", catalogCtrl.ListPacks).Methods(http.MethodGet)
 	api.HandleFunc("/catalog/{catalog_id}", catalogCtrl.GetPackDetail).Methods(http.MethodGet)
+	api.HandleFunc("/catalog/assign", packAssignmentCtrl.AssignPack).Methods(http.MethodPost)
+	
 	api.HandleFunc("/packs/assign", packAssignmentCtrl.AssignPack).Methods(http.MethodPost)
 	api.HandleFunc("/packs", catalogCtrl.ListPacks).Methods(http.MethodGet)
 	api.HandleFunc("/packs/{catalog_id}", catalogCtrl.GetPackDetail).Methods(http.MethodGet)
+	
 	api.HandleFunc("/tenants/{tenant_id}/orders", orderCtrl.GetOrderHistoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/orders/recent", orderCtrl.GetRecentOrdersByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/orders/summary", orderCtrl.GetTodayOrderSummaryByTenantID).Methods(http.MethodGet)
+	
 	api.HandleFunc("/cart/load", cartCtrl.LoadCart).Methods(http.MethodGet)
 	api.HandleFunc("/cart/update", cartCtrl.UpdateCart).Methods(http.MethodPut)
 	api.HandleFunc("/cart/items", cartCtrl.DeleteCartItems).Methods(http.MethodDelete)
+	
 	api.HandleFunc("/esims/inventory", esimCtrl.GetInventoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/esims/inventory/{tenant_id}", esimCtrl.GetInventoryByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/esims/order", esimCtrl.OrderEsims).Methods(http.MethodPost)
 	api.HandleFunc("/esims/assign-catalog", esimCtrl.AssignCatalog).Methods(http.MethodPost)
+	
 	api.HandleFunc("/tenants/{tenant_id}/credit-limit", tenantCreditLimitCtrl.GetCurrentByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/wallet", tenantWalletCtrl.GetWalletByTenantID).Methods(http.MethodGet)
 

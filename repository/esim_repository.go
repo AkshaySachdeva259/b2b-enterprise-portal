@@ -181,6 +181,9 @@ func (r *esimRepository) AssignCatalogToEsim(tenantID string, receiverUserID str
 		if err := tx.Create(allocation).Error; err != nil {
 			return err
 		}
+		if err := r.createUserPlanEntryTx(tx, &selectedEsim, receiverUserID, catalogID, invoiceID, requestID, "SYSTEM"); err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -192,6 +195,8 @@ func (r *esimRepository) AssignCatalogToEsim(tenantID string, receiverUserID str
 }
 
 func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID string, catalogID int64, amountUSD string, currency string, orderID string, invoiceID string, requestID string, transactionID string, orderRequest models.OrderRequestObject) (*models.PackAssignmentResult, error) {
+	receiverUserID = strings.TrimSpace(receiverUserID)
+
 	result := &models.PackAssignmentResult{
 		OrderID:          orderID,
 		TenantID:         tenantID,
@@ -200,7 +205,17 @@ func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID
 		InvoiceID:        invoiceID,
 		RequestID:        requestID,
 		TransactionID:    transactionID,
-		AmountChargedUSD: amountUSD,
+		AmountChargedUSD: "0.00",
+	}
+
+	if receiverUserID != "" {
+		reusedResult, reused, err := r.assignUnallocatedPackWithoutPurchase(tenantID, receiverUserID, catalogID)
+		if err != nil {
+			return nil, err
+		}
+		if reused {
+			return reusedResult, nil
+		}
 	}
 
 	normalizedCurrency := strings.ToUpper(strings.TrimSpace(currency))
@@ -219,10 +234,37 @@ func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID
 	}
 
 	tenantIDString := strconv.FormatInt(tenantID, 10)
+	systemUser := "SYSTEM"
+	ledgerInitiatedCreated := false
+
+	orderRequest.PaymentTransactionID = transactionID
+	orderRequest.InvoiceID = invoiceID
+	orderRequest.RequestID = requestID
+	orderRequest.AssignmentStatus = models.OrderStatusInitiated
+
+	initiatedOrderRequest, err := json.Marshal(orderRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.createOrderRecord(&models.OrderRecord{
+		TenantID:      tenantID,
+		OrderID:       orderID,
+		TotalAmount:   &amountFloat,
+		RequestObject: initiatedOrderRequest,
+		Status:        models.OrderStatusInitiated,
+		IsActive:      true,
+		CreatedBy:     &systemUser,
+		UpdatedBy:     &systemUser,
+	}); err != nil {
+		return nil, err
+	}
 
 	err = r.db.Transaction(func(tx *gorm.DB) error {
-		if err := lockReceiverAssignmentTx(tx, receiverUserID); err != nil {
-			return err
+		if receiverUserID != "" {
+			if err := lockReceiverAssignmentTx(tx, receiverUserID); err != nil {
+				return err
+			}
 		}
 
 		wallet, err := lockTenantWalletTx(tx, tenantID)
@@ -250,6 +292,9 @@ func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID
 			return err
 		}
 
+		now := time.Now()
+		orderRequest.WalletBalanceBefore = result.WalletBalanceBefore
+
 		if availableBalanceRat.Cmp(amountRat) < 0 {
 			return &InsufficientWalletBalanceError{
 				AvailableBalance: result.WalletBalanceBefore,
@@ -258,43 +303,21 @@ func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID
 			}
 		}
 
-		now := time.Now()
-		systemUser := "SYSTEM"
-		orderRequest.PaymentTransactionID = transactionID
-		orderRequest.InvoiceID = invoiceID
-		orderRequest.RequestID = requestID
-		orderRequest.WalletBalanceBefore = result.WalletBalanceBefore
-		orderRequest.AssignmentStatus = models.OrderStatusPending
-
-		initialOrderRequest, err := json.Marshal(orderRequest)
-		if err != nil {
+		if err := r.createCreditLedgerEntryTx(tx, models.CreditLedgerTransaction{
+			TenantID:          tenantID,
+			Currency:          stringPointer(walletCurrency),
+			TransactionAmount: &amountFloat,
+			Status:            stringPointer("INITIATED"),
+			Product:           stringPointer("PACK"),
+			OrderID:           &orderID,
+			TransactionType:   stringPointer("PACK_ASSIGNMENT"),
+			TransactionID:     &transactionID,
+			CreatedBy:         &systemUser,
+			UpdatedBy:         &systemUser,
+		}); err != nil {
 			return err
 		}
-
-		order := &models.OrderRecord{
-			TenantID:      tenantID,
-			OrderID:       orderID,
-			TotalAmount:   &amountFloat,
-			RequestObject: initialOrderRequest,
-			Status:        models.OrderStatusPending,
-			IsActive:      true,
-			CreatedAt:     &now,
-			CreatedBy:     &systemUser,
-			UpdatedAt:     &now,
-			UpdatedBy:     &systemUser,
-		}
-		if err := tx.Create(order).Error; err != nil {
-			return err
-		}
-
-		selectedEsim, esimSource, err := r.selectAssignableEsimTx(tx, tenantIDString, receiverUserID)
-		if err != nil {
-			return err
-		}
-
-		transactionType := "PACK_ASSIGNMENT"
-		transactionKind := "DEBIT"
-		product := "PACK"
+		ledgerInitiatedCreated = true
 
 		if err := tx.
 			Model(&models.TenantWallet{}).
@@ -308,82 +331,127 @@ func (r *esimRepository) PurchaseAndAssignCatalog(tenantID int64, receiverUserID
 			return err
 		}
 
-		walletTransaction := &models.CreditLedgerTransaction{
+		completedLedger := models.CreditLedgerTransaction{
 			TenantID:          tenantID,
 			Currency:          stringPointer(walletCurrency),
 			TransactionAmount: &amountFloat,
-			Type:              &transactionKind,
-			Product:           &product,
-			OrderID:           &invoiceID,
-			TransactionType:   &transactionType,
+			Status:            stringPointer("COMPLETED"),
+			Product:           stringPointer("PACK"),
+			OrderID:           &orderID,
+			TransactionType:   stringPointer("PACK_ASSIGNMENT"),
 			TransactionID:     &transactionID,
-			CreatedAt:         &now,
 			CreatedBy:         &systemUser,
-			UpdatedAt:         &now,
 			UpdatedBy:         &systemUser,
 		}
-		if err := tx.Create(walletTransaction).Error; err != nil {
+		if err := r.createCreditLedgerEntryTx(tx, completedLedger); err != nil {
 			return err
 		}
 
-		receiverID := selectedEsim.ICCID
+		result.WalletTransaction = &models.WalletTransaction{
+			ID:              completedLedger.ID,
+			Currency:        completedLedger.Currency,
+			Amount:          amountFloat,
+			Status:          completedLedger.Status,
+			Product:         completedLedger.Product,
+			OrderID:         completedLedger.OrderID,
+			TransactionType: completedLedger.TransactionType,
+			TransactionID:   completedLedger.TransactionID,
+			CreatedAt:       completedLedger.CreatedAt,
+		}
+
+		result.AmountChargedUSD = formatMoney(amountRat)
+		result.WalletBalanceAfter = formatMoney(new(big.Rat).Sub(availableBalanceRat, amountRat))
+
+		allocationStatus := models.AllocationStatusUnallocated
+		var receiverID *string
+		if receiverUserID != "" {
+			allocationStatus = models.AllocationStatusAssigned
+			receiverID = stringPointer(receiverUserID)
+			result.EsimSource = "new_purchase_assigned"
+		} else {
+			result.EsimSource = "new_purchase_unallocated"
+		}
+
 		allocation := &models.B2BAllocation{
 			CatalogID:     catalogID,
 			OwnerID:       tenantIDString,
-			ReceiverID:    &receiverID,
+			ReceiverID:    receiverID,
 			InvoiceID:     invoiceID,
 			Tenant:        &tenantIDString,
 			RequestID:     requestID,
 			TransactionID: &transactionID,
 			CreatedBy:     systemUser,
 			UpdatedBy:     systemUser,
+			Status:        stringPointer(allocationStatus),
+			OrderID:       &orderID,
 		}
 		if err := tx.Create(allocation).Error; err != nil {
 			return err
 		}
 
-		result.WalletBalanceAfter = formatMoney(new(big.Rat).Sub(availableBalanceRat, amountRat))
+		if receiverUserID != "" {
+			selectedEsim, esimSource, err := r.selectAssignableEsimTx(tx, tenantIDString, receiverUserID)
+			if err != nil {
+				return err
+			}
+			if err := r.createUserPlanEntryTx(tx, selectedEsim, receiverUserID, catalogID, orderID, transactionID, systemUser); err != nil {
+				return err
+			}
+			result.EsimSource = esimSource
+			result.Esim = selectedEsim
+			orderRequest.EsimICCID = selectedEsim.ICCID
+		}
+
 		orderRequest.WalletBalanceAfter = result.WalletBalanceAfter
 		orderRequest.AssignmentStatus = models.OrderStatusCompleted
-		orderRequest.EsimICCID = selectedEsim.ICCID
-		orderRequest.EsimSource = esimSource
+		orderRequest.EsimSource = result.EsimSource
 
 		finalOrderRequest, err := json.Marshal(orderRequest)
 		if err != nil {
 			return err
 		}
-		if err := tx.
-			Model(&models.OrderRecord{}).
-			Where("id = ?", order.ID).
-			Updates(map[string]interface{}{
-				"request_object": finalOrderRequest,
-				"status":         models.OrderStatusCompleted,
-				"updated_at":     now,
-				"updated_by":     systemUser,
-				"is_active":      true,
-			}).Error; err != nil {
+		if err := r.updateOrderStatusTx(tx, orderID, models.OrderStatusCompleted, finalOrderRequest, systemUser); err != nil {
 			return err
 		}
 
 		result.OrderStatus = models.OrderStatusCompleted
-		result.EsimSource = esimSource
-		result.Esim = selectedEsim
 		result.Allocation = allocation
-		result.WalletTransaction = &models.WalletTransaction{
-			ID:              walletTransaction.ID,
-			Currency:        walletTransaction.Currency,
-			Amount:          amountFloat,
-			Type:            walletTransaction.Type,
-			Product:         walletTransaction.Product,
-			OrderID:         walletTransaction.OrderID,
-			TransactionType: walletTransaction.TransactionType,
-			TransactionID:   walletTransaction.TransactionID,
-			CreatedAt:       walletTransaction.CreatedAt,
-		}
 
 		return nil
 	})
 	if err != nil {
+		failedOrderRequest := orderRequest
+		failedOrderRequest.AssignmentStatus = models.OrderStatusFailed
+		failedOrderRequest.FailureReason = err.Error()
+		if result.WalletBalanceBefore != "" {
+			failedOrderRequest.WalletBalanceBefore = result.WalletBalanceBefore
+		}
+		if result.WalletBalanceAfter != "" {
+			failedOrderRequest.WalletBalanceAfter = result.WalletBalanceAfter
+		}
+
+		failedPayload, marshalErr := json.Marshal(failedOrderRequest)
+		if marshalErr != nil {
+			return nil, err
+		}
+		if statusErr := r.updateOrderStatus(orderID, models.OrderStatusFailed, failedPayload, systemUser); statusErr != nil {
+			return nil, fmt.Errorf("pack assignment failed: %w; also failed to mark order failed: %v", err, statusErr)
+		}
+
+		if ledgerInitiatedCreated {
+			_ = r.createCreditLedgerEntry(models.CreditLedgerTransaction{
+				TenantID:          tenantID,
+				Currency:          stringPointer(normalizedCurrency),
+				TransactionAmount: &amountFloat,
+				Status:            stringPointer("FAILED"),
+				Product:           stringPointer("PACK"),
+				OrderID:           &orderID,
+				TransactionType:   stringPointer("PACK_ASSIGNMENT"),
+				TransactionID:     &transactionID,
+				CreatedBy:         &systemUser,
+				UpdatedBy:         &systemUser,
+			})
+		}
 		return nil, err
 	}
 
@@ -446,6 +514,23 @@ func lockTenantWalletTx(tx *gorm.DB, tenantID int64) (*models.TenantWallet, erro
 func (r *esimRepository) selectAssignableEsimTx(tx *gorm.DB, tenantID string, receiverUserID string) (*models.Esim, string, error) {
 	existingEsim, err := findExistingUserEsimTx(tx, tenantID, receiverUserID)
 	if err == nil {
+		now := time.Now()
+		if err := tx.Model(&models.Esim{}).
+			Where("id = ?", existingEsim.ID).
+			Updates(map[string]interface{}{
+				"user_email": receiverUserID,
+				"user_id":    receiverUserID,
+				"status":     "ASSIGNED",
+				"updated_at": now,
+				"updated_by": "SYSTEM",
+			}).Error; err != nil {
+			return nil, "", err
+		}
+		existingEsim.UserEmail = stringPointer(receiverUserID)
+		existingEsim.UserID = stringPointer(receiverUserID)
+		existingEsim.Status = "ASSIGNED"
+		existingEsim.UpdatedAt = &now
+		existingEsim.UpdatedBy = "SYSTEM"
 		return existingEsim, models.PackAssignmentEsimSourceExistingUser, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -459,14 +544,18 @@ func (r *esimRepository) selectAssignableEsimTx(tx *gorm.DB, tenantID string, re
 			Model(&models.Esim{}).
 			Where("id = ?", tenantInventoryEsim.ID).
 			Updates(map[string]interface{}{
+				"user_email": receiverUserID,
 				"user_id":    receiverUserID,
+				"status":     "ASSIGNED",
 				"updated_at": now,
 				"updated_by": "SYSTEM",
 			}).Error; err != nil {
 			return nil, "", err
 		}
 
+		tenantInventoryEsim.UserEmail = stringPointer(receiverUserID)
 		tenantInventoryEsim.UserID = stringPointer(receiverUserID)
+		tenantInventoryEsim.Status = "ASSIGNED"
 		tenantInventoryEsim.UpdatedAt = &now
 		tenantInventoryEsim.UpdatedBy = "SYSTEM"
 		return tenantInventoryEsim, models.PackAssignmentEsimSourceTenantInventory, nil
@@ -487,7 +576,9 @@ func (r *esimRepository) selectAssignableEsimTx(tx *gorm.DB, tenantID string, re
 		Where("id = ?", selectedEsim.ID).
 		Updates(map[string]interface{}{
 			"tenant_id":  tenantID,
+			"user_email": receiverUserID,
 			"user_id":    receiverUserID,
+			"status":     "ASSIGNED",
 			"updated_at": now,
 			"updated_by": "SYSTEM",
 		}).Error; err != nil {
@@ -495,7 +586,9 @@ func (r *esimRepository) selectAssignableEsimTx(tx *gorm.DB, tenantID string, re
 	}
 
 	selectedEsim.TenantID = stringPointer(tenantID)
+	selectedEsim.UserEmail = stringPointer(receiverUserID)
 	selectedEsim.UserID = stringPointer(receiverUserID)
+	selectedEsim.Status = "ASSIGNED"
 	selectedEsim.UpdatedAt = &now
 	selectedEsim.UpdatedBy = "SYSTEM"
 	return &selectedEsim, models.PackAssignmentEsimSourceAvailableInventory, nil
@@ -509,7 +602,7 @@ func findExistingUserEsimTx(tx *gorm.DB, tenantID string, receiverUserID string)
 		Model(&models.Esim{}).
 		Where("deleted_at IS NULL").
 		Where("COALESCE(tenant_id, '') = ?", tenantID).
-		Where("user_id = ?", receiverUserID).
+		Where("(user_id = ? OR user_email = ?)", receiverUserID, receiverUserID).
 		Where("UPPER(COALESCE(status, '')) <> ?", "TERMINATED").
 		Order("updated_at DESC NULLS LAST").
 		Order("created_at DESC NULLS LAST").
@@ -526,7 +619,7 @@ func findExistingUserEsimTx(tx *gorm.DB, tenantID string, receiverUserID string)
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Model(&models.Esim{}).
 		Where("deleted_at IS NULL").
-		Where("user_id = ?", receiverUserID).
+		Where("(user_id = ? OR user_email = ?)", receiverUserID, receiverUserID).
 		Where("UPPER(COALESCE(status, '')) <> ?", "TERMINATED").
 		Order("updated_at DESC NULLS LAST").
 		Order("created_at DESC NULLS LAST").
@@ -556,6 +649,93 @@ func findTenantInventoryEsimTx(tx *gorm.DB, tenantID string) (*models.Esim, erro
 		return nil, err
 	}
 	return &esim, nil
+}
+
+func findUnallocatedAllocationTx(tx *gorm.DB, tenantID string, catalogID int64) (*models.B2BAllocation, error) {
+	var allocation models.B2BAllocation
+	err := tx.
+		Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+		Model(&models.B2BAllocation{}).
+		Where("deleted_at IS NULL").
+		Where("COALESCE(tenant, '') = ?", tenantID).
+		Where("catalog_id = ?", catalogID).
+		Where("COALESCE(receiver_id, '') = ''").
+		Where("(COALESCE(status, '') = '' OR UPPER(status) = ?)", models.AllocationStatusUnallocated).
+		Order("created_at ASC").
+		First(&allocation).Error
+	if err != nil {
+		return nil, err
+	}
+	return &allocation, nil
+}
+
+func (r *esimRepository) assignUnallocatedPackWithoutPurchase(tenantID int64, receiverUserID string, catalogID int64) (*models.PackAssignmentResult, bool, error) {
+	tenantIDString := strconv.FormatInt(tenantID, 10)
+	systemUser := "SYSTEM"
+	result := &models.PackAssignmentResult{
+		TenantID:         tenantID,
+		ReceiverUserID:   receiverUserID,
+		CatalogID:        catalogID,
+		AmountChargedUSD: "0.00",
+		OrderStatus:      models.OrderStatusCompleted,
+		EsimSource:       "unallocated_inventory",
+	}
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := lockReceiverAssignmentTx(tx, receiverUserID); err != nil {
+			return err
+		}
+
+		unallocated, err := findUnallocatedAllocationTx(tx, tenantIDString, catalogID)
+		if err != nil {
+			return err
+		}
+
+		now := time.Now()
+		assignedStatus := models.AllocationStatusAssigned
+		if err := tx.Model(&models.B2BAllocation{}).
+			Where("id = ?", unallocated.ID).
+			Updates(map[string]interface{}{
+				"receiver_id": receiverUserID,
+				"status":      assignedStatus,
+				"updated_at":  now,
+				"updated_by":  systemUser,
+			}).Error; err != nil {
+			return err
+		}
+
+		unallocated.ReceiverID = stringPointer(receiverUserID)
+		unallocated.Status = stringPointer(assignedStatus)
+		result.Allocation = unallocated
+
+		selectedEsim, esimSource, err := r.selectAssignableEsimTx(tx, tenantIDString, receiverUserID)
+		if err != nil {
+			return err
+		}
+		transactionID := ""
+		if unallocated.TransactionID != nil {
+			transactionID = strings.TrimSpace(*unallocated.TransactionID)
+		}
+		if err := r.createUserPlanEntryTx(tx, selectedEsim, receiverUserID, catalogID, result.OrderID, transactionID, systemUser); err != nil {
+			return err
+		}
+		result.Esim = selectedEsim
+		result.EsimSource = esimSource
+
+		if unallocated.OrderID != nil {
+			result.OrderID = strings.TrimSpace(*unallocated.OrderID)
+		}
+
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+
+	return result, true, nil
 }
 
 func parseMoney(value string) (*big.Rat, error) {
@@ -597,4 +777,87 @@ func valueOrEmpty(value *string) string {
 func stringPointer(value string) *string {
 	value = strings.TrimSpace(value)
 	return &value
+}
+
+func (r *esimRepository) createOrderRecord(order *models.OrderRecord) error {
+	return r.db.Create(order).Error
+}
+
+func (r *esimRepository) updateOrderStatus(orderID string, status string, requestObject []byte, updatedBy string) error {
+	return r.db.Model(&models.OrderRecord{}).
+		Where("order_id = ?", orderID).
+		Updates(map[string]interface{}{
+			"status":         status,
+			"request_object": requestObject,
+			"updated_at":     time.Now(),
+			"updated_by":     updatedBy,
+			"is_active":      true,
+		}).Error
+}
+
+func (r *esimRepository) updateOrderStatusTx(tx *gorm.DB, orderID string, status string, requestObject []byte, updatedBy string) error {
+	return tx.Model(&models.OrderRecord{}).
+		Where("order_id = ?", orderID).
+		Updates(map[string]interface{}{
+			"status":         status,
+			"request_object": requestObject,
+			"updated_at":     time.Now(),
+			"updated_by":     updatedBy,
+			"is_active":      true,
+		}).Error
+}
+
+func (r *esimRepository) createCreditLedgerEntry(ledger models.CreditLedgerTransaction) error {
+	return r.db.Create(&ledger).Error
+}
+
+func (r *esimRepository) createCreditLedgerEntryTx(tx *gorm.DB, ledger models.CreditLedgerTransaction) error {
+	return tx.Create(&ledger).Error
+}
+
+func (r *esimRepository) createUserPlanEntryTx(
+	tx *gorm.DB,
+	esim *models.Esim,
+	receiverUserID string,
+	catalogID int64,
+	orderID string,
+	transactionID string,
+	systemUser string,
+) error {
+	receiverUserID = strings.TrimSpace(receiverUserID)
+	if receiverUserID == "" || esim == nil || strings.TrimSpace(esim.ICCID) == "" {
+		return nil
+	}
+
+	vendor := "UNKNOWN"
+	if esim.Vendor != nil && strings.TrimSpace(*esim.Vendor) != "" {
+		vendor = strings.TrimSpace(*esim.Vendor)
+	}
+
+	recordID := time.Now().UnixNano()
+	appliedPlanID := strconv.FormatInt(catalogID, 10)
+	paymentIntent := strings.TrimSpace(orderID)
+	if paymentIntent == "" {
+		paymentIntent = strings.TrimSpace(transactionID)
+	}
+	paymentIntentPtr := stringPointer(paymentIntent)
+	if paymentIntent == "" {
+		paymentIntentPtr = nil
+	}
+
+	userPlan := models.UserPlan{
+		ID:            recordID,
+		RowID:         recordID,
+		CreatedBy:     systemUser,
+		UpdatedBy:     systemUser,
+		UserID:        receiverUserID,
+		ICCID:         strings.TrimSpace(esim.ICCID),
+		Vendor:        vendor,
+		CatalogID:     catalogID,
+		AppliedPlanID: appliedPlanID,
+		PlanStatus:    models.UserPlanStatusActive,
+		PaymentIntent: paymentIntentPtr,
+	}
+
+	return tx.Create(&userPlan).Error
 }

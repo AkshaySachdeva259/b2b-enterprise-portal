@@ -7,6 +7,7 @@ import (
 
 const (
 	OrderProductPack     = "PACK"
+	OrderStatusInitiated = "initiated"
 	OrderStatusPending   = "pending"
 	OrderStatusCompleted = "completed"
 	OrderStatusFailed    = "failed"
@@ -44,6 +45,7 @@ type OrderRequestObject struct {
 	WalletBalanceBefore  string `json:"wallet_balance_before,omitempty"`
 	WalletBalanceAfter   string `json:"wallet_balance_after,omitempty"`
 	AssignmentStatus     string `json:"assignment_status,omitempty"`
+	FailureReason        string `json:"failure_reason,omitempty"`
 	EsimICCID            string `json:"esim_iccid,omitempty"`
 	EsimSource           string `json:"esim_source,omitempty"`
 }

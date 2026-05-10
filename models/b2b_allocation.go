@@ -2,6 +2,11 @@ package models
 
 import "time"
 
+const (
+	AllocationStatusUnallocated = "UNALLOCATED"
+	AllocationStatusAssigned    = "ASSIGNED"
+)
+
 type B2BAllocation struct {
 	ID            int64      `gorm:"column:id;primaryKey"               json:"id"`
 	CreatedAt     time.Time  `gorm:"column:created_at;autoCreateTime"   json:"created_at"`
@@ -16,6 +21,8 @@ type B2BAllocation struct {
 	Tenant        *string    `gorm:"column:tenant"                      json:"tenant,omitempty"`
 	RequestID     string     `gorm:"column:request_id"                  json:"request_id"`
 	TransactionID *string    `gorm:"column:transaction_id"              json:"transaction_id,omitempty"`
+	Status        *string    `gorm:"column:status"                      json:"status,omitempty"`
+	OrderID       *string    `gorm:"column:order_id"                    json:"order_id,omitempty"`
 }
 
 func (B2BAllocation) TableName() string { return "tbl_b2b_allocation" }

@@ -49,7 +49,7 @@ func (s *tenantWalletService) GetWalletSummaryByTenantID(tenantID int64) (*model
 			ID:              transaction.ID,
 			Currency:        transaction.Currency,
 			Amount:          floatValue(transaction.TransactionAmount),
-			Type:            transaction.Type,
+			Status:          transaction.Status,
 			Product:         transaction.Product,
 			OrderID:         transaction.OrderID,
 			TransactionType: transaction.TransactionType,

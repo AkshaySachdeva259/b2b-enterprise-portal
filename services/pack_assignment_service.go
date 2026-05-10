@@ -41,9 +41,6 @@ func (s *packAssignmentService) AssignPack(tenantID string, receiverUserID strin
 	}
 
 	receiverUserID = strings.TrimSpace(receiverUserID)
-	if receiverUserID == "" {
-		return nil, ErrReceiverUserIDRequired
-	}
 
 	if catalogID <= 0 {
 		return nil, ErrCatalogIDRequired
