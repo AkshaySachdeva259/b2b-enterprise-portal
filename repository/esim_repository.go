@@ -54,7 +54,8 @@ func (r *esimRepository) GetInventoryByTenantID(tenantID string, filter models.E
 	query := r.db.
 		Model(&models.Esim{}).
 		Where("deleted_at IS NULL").
-		Where("tenant_id = ?", tenantID)
+		Where("tenant_id = ?", tenantID).
+		Where("UPPER(COALESCE(status, '')) = ?", "AVAILABLE")
 
 	switch filter {
 	case models.EsimInventoryFilterActive:
