@@ -15,7 +15,7 @@ var (
 	ErrTenantIDMustBeInt8         = errors.New("tenant_id must be a valid int8")
 	ErrReceiverUserIDRequired     = errors.New("receiver_user_id is required")
 	ErrCatalogIDRequired          = errors.New("catalog_id is required")
-	ErrInvalidEsimInventoryFilter = errors.New("status must be one of: active, all, released, installed")
+	ErrInvalidEsimInventoryFilter = errors.New("status must be one of: assigned, all, released, installed")
 	ErrInvalidEsimQuantity        = errors.New("quantity must be greater than zero")
 	ErrInsufficientEsimInventory  = repository.ErrInsufficientEsimInventory
 	ErrCatalogNotFound            = errors.New("catalog not found")
@@ -27,8 +27,13 @@ const esimUnitPriceUSD = 1.0
 
 type EsimOrderInsufficientWalletBalanceError = repository.InsufficientWalletBalanceError
 
+type EsimInventoryResult struct {
+	Esims          []models.Esim `json:"esims"`
+	AvailableCount int64         `json:"available_count"`
+}
+
 type EsimService interface {
-	GetInventoryByTenantID(tenantID, filter string) ([]models.Esim, error)
+	GetInventoryByTenantID(tenantID, filter string) (*EsimInventoryResult, error)
 	OrderEsims(tenantID string, quantity int) ([]models.Esim, error)
 	AssignCatalog(tenantID string, receiverUserID string, catalogID string, iccid string, autoAllocateEsim bool) (*models.Esim, *models.B2BAllocation, bool, error)
 }
@@ -48,7 +53,7 @@ func NewEsimService(
 	}
 }
 
-func (s *esimService) GetInventoryByTenantID(tenantID, filter string) ([]models.Esim, error) {
+func (s *esimService) GetInventoryByTenantID(tenantID, filter string) (*EsimInventoryResult, error) {
 	tenantID = strings.TrimSpace(tenantID)
 	if tenantID == "" {
 		return nil, ErrTenantIDRequired
@@ -64,7 +69,15 @@ func (s *esimService) GetInventoryByTenantID(tenantID, filter string) ([]models.
 		return nil, err
 	}
 
-	return esims, nil
+	availableCount, err := s.repo.CountAvailableInventoryByTenantID(tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &EsimInventoryResult{
+		Esims:          esims,
+		AvailableCount: availableCount,
+	}, nil
 }
 
 func (s *esimService) OrderEsims(tenantID string, quantity int) ([]models.Esim, error) {
@@ -170,8 +183,10 @@ func normalizeEsimInventoryFilter(filter string) (models.EsimInventoryFilter, er
 	switch strings.ToLower(strings.TrimSpace(filter)) {
 	case "", string(models.EsimInventoryFilterAll):
 		return models.EsimInventoryFilterAll, nil
-	case string(models.EsimInventoryFilterActive):
-		return models.EsimInventoryFilterActive, nil
+	case string(models.EsimInventoryFilterAssigned):
+		return models.EsimInventoryFilterAssigned, nil
+	case "active":
+		return models.EsimInventoryFilterAssigned, nil
 	case string(models.EsimInventoryFilterReleased):
 		return models.EsimInventoryFilterReleased, nil
 	case string(models.EsimInventoryFilterInstalled):

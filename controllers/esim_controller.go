@@ -50,6 +50,12 @@ type assignCatalogResponse struct {
 	Allocation        *models.B2BAllocation `json:"allocation"`
 }
 
+type esimInventoryResponse struct {
+	TenantID       string        `json:"tenant_id"`
+	AvailableCount int64         `json:"available_count"`
+	Esims          []models.Esim `json:"esims"`
+}
+
 func NewEsimController(svc services.EsimService) EsimController {
 	return &esimController{svc: svc}
 }
@@ -61,7 +67,7 @@ func (c *esimController) GetInventoryByTenantID(w http.ResponseWriter, r *http.R
 		r.URL.Query().Get("tenant_id"),
 	)
 
-	esims, err := c.svc.GetInventoryByTenantID(tenantID, r.URL.Query().Get("status"))
+	inventory, err := c.svc.GetInventoryByTenantID(tenantID, r.URL.Query().Get("status"))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrTenantIDRequired), errors.Is(err, services.ErrInvalidEsimInventoryFilter):
@@ -72,7 +78,11 @@ func (c *esimController) GetInventoryByTenantID(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	writeJSON(w, http.StatusOK, Response{Data: esims, Message: "success"})
+	writeJSON(w, http.StatusOK, Response{Data: esimInventoryResponse{
+		TenantID:       tenantID,
+		AvailableCount: inventory.AvailableCount,
+		Esims:          inventory.Esims,
+	}, Message: "success"})
 }
 
 func (c *esimController) OrderEsims(w http.ResponseWriter, r *http.Request) {

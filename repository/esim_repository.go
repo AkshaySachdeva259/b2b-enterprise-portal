@@ -34,6 +34,7 @@ func (e *InsufficientWalletBalanceError) Error() string {
 
 type EsimRepository interface {
 	GetInventoryByTenantID(tenantID string, filter models.EsimInventoryFilter) ([]models.Esim, error)
+	CountAvailableInventoryByTenantID(tenantID string) (int64, error)
 	AllocateReleasedInventory(tenantID string, quantity int) ([]models.Esim, error)
 	PurchaseEsims(tenantID int64, quantity int, amountUSD string, currency string, orderID string, transactionID string, orderRequest models.OrderRequestObject) ([]models.Esim, error)
 	AssignCatalogToEsim(tenantID string, receiverUserID string, catalogID string, iccid string, autoAllocateEsim bool, invoiceID string, requestID string) (*models.Esim, *models.B2BAllocation, bool, error)
@@ -54,12 +55,11 @@ func (r *esimRepository) GetInventoryByTenantID(tenantID string, filter models.E
 	query := r.db.
 		Model(&models.Esim{}).
 		Where("deleted_at IS NULL").
-		Where("tenant_id = ?", tenantID).
-		Where("UPPER(COALESCE(status, '')) = ?", "AVAILABLE")
+		Where("tenant_id = ?", tenantID)
 
 	switch filter {
-	case models.EsimInventoryFilterActive:
-		query = query.Where("UPPER(COALESCE(telna_status, '')) <> ?", "RELEASED")
+	case models.EsimInventoryFilterAssigned:
+		query = query.Where("UPPER(COALESCE(status, '')) = ?", "ASSIGNED")
 	case models.EsimInventoryFilterReleased:
 		query = query.Where("UPPER(COALESCE(telna_status, '')) = ?", "RELEASED")
 	case models.EsimInventoryFilterInstalled:
@@ -71,6 +71,20 @@ func (r *esimRepository) GetInventoryByTenantID(tenantID string, filter models.E
 		Find(&results).Error
 
 	return results, err
+}
+
+func (r *esimRepository) CountAvailableInventoryByTenantID(tenantID string) (int64, error) {
+	var count int64
+	err := r.db.
+		Model(&models.Esim{}).
+		Where("deleted_at IS NULL").
+		Where("tenant_id = ?", tenantID).
+		Where("UPPER(COALESCE(status, '')) = ?", "AVAILABLE").
+		Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *esimRepository) AllocateReleasedInventory(tenantID string, quantity int) ([]models.Esim, error) {

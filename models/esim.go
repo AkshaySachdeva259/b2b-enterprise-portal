@@ -6,7 +6,7 @@ type EsimInventoryFilter string
 
 const (
 	EsimInventoryFilterAll       EsimInventoryFilter = "all"
-	EsimInventoryFilterActive    EsimInventoryFilter = "active"
+	EsimInventoryFilterAssigned  EsimInventoryFilter = "assigned"
 	EsimInventoryFilterReleased  EsimInventoryFilter = "released"
 	EsimInventoryFilterInstalled EsimInventoryFilter = "installed"
 )
