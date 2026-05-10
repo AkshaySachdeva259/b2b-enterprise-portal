@@ -29,7 +29,8 @@ func New(db *gorm.DB) http.Handler {
 	tenantWalletSvc := services.NewTenantWalletService(tenantWalletRepo)
 	packInventorySvc := services.NewPackInventoryService(packInventoryRepo)
 	orderSvc := services.NewOrderService(orderRepo)
-	packAssignmentSvc := services.NewPackAssignmentService(esimRepo, catalogRepo)
+	emailNotifier := services.NewEmailNotifierFromEnv()
+	packAssignmentSvc := services.NewPackAssignmentService(esimRepo, catalogRepo, emailNotifier)
 
 	destCtrl := controllers.NewDestinationController(destSvc)
 	catalogCtrl := controllers.NewCatalogController(catalogSvc)

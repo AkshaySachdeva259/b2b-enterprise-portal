@@ -1,7 +1,9 @@
 package services
 
 import (
+	"context"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 
@@ -25,12 +27,18 @@ type PackAssignmentService interface {
 type packAssignmentService struct {
 	esimRepo    repository.EsimRepository
 	catalogRepo repository.CatalogRepository
+	notifier    EmailNotifier
 }
 
-func NewPackAssignmentService(esimRepo repository.EsimRepository, catalogRepo repository.CatalogRepository) PackAssignmentService {
+func NewPackAssignmentService(esimRepo repository.EsimRepository, catalogRepo repository.CatalogRepository, notifier EmailNotifier) PackAssignmentService {
+	if notifier == nil {
+		notifier = &noopEmailNotifier{}
+	}
+
 	return &packAssignmentService{
 		esimRepo:    esimRepo,
 		catalogRepo: catalogRepo,
+		notifier:    notifier,
 	}
 }
 
@@ -114,6 +122,8 @@ func (s *packAssignmentService) AssignPack(tenantID string, receiverUserID strin
 		return nil, err
 	}
 
+	s.sendPackPurchaseNotification(catalog.Name, result)
+
 	return result, nil
 }
 
@@ -130,4 +140,32 @@ func valueOrEmptyString(value *string) string {
 		return ""
 	}
 	return strings.TrimSpace(*value)
+}
+
+func (s *packAssignmentService) sendPackPurchaseNotification(packName string, result *models.PackAssignmentResult) {
+	if result == nil || result.Esim == nil {
+		return
+	}
+
+	receiverEmail := strings.TrimSpace(result.ReceiverUserID)
+	if receiverEmail == "" || !strings.Contains(receiverEmail, "@") {
+		return
+	}
+	if strings.TrimSpace(result.Esim.QRCode) == "" {
+		return
+	}
+
+	err := s.notifier.SendPackPurchaseQRCode(context.Background(), PackPurchaseEmailPayload{
+		ToEmail:    receiverEmail,
+		TenantID:   result.TenantID,
+		OrderID:    strings.TrimSpace(result.OrderID),
+		CatalogID:  strings.TrimSpace(result.CatalogID),
+		PackName:   strings.TrimSpace(packName),
+		ReceiverID: receiverEmail,
+		ICCID:      strings.TrimSpace(result.Esim.ICCID),
+		QRCode:     strings.TrimSpace(result.Esim.QRCode),
+	})
+	if err != nil {
+		log.Printf("pack purchase email notify failed: order_id=%s receiver=%s err=%v", result.OrderID, receiverEmail, err)
+	}
 }
