@@ -33,8 +33,12 @@ func (c *packInventoryController) ListByTenantID(w http.ResponseWriter, r *http.
 		return
 	}
 
-	inventory, err := c.svc.ListByTenantID(tenantID)
+	inventory, err := c.svc.ListByTenantID(tenantID, r.URL.Query().Get("status"))
 	if err != nil {
+		if err == services.ErrInvalidPackInventoryStatusFilter {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "failed to fetch pack inventory")
 		return
 	}

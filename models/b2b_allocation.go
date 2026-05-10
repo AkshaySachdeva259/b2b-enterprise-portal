@@ -4,7 +4,7 @@ import "time"
 
 const (
 	AllocationStatusUnallocated = "UNALLOCATED"
-	AllocationStatusAssigned    = "ASSIGNED"
+	AllocationStatusAssigned    = "ALLOCATED"
 )
 
 type B2BAllocation struct {
