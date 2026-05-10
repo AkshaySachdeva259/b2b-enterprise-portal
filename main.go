@@ -23,11 +23,11 @@ func main() {
 	handler := router.New(db)
 
 	srv := &http.Server{
-		Addr:    ":3080",
+		Addr:    ":3081",
 		Handler: handler,
 	}
 
-	log.Println("server listening on :3080")
+	log.Println("server listening on :3081")
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
