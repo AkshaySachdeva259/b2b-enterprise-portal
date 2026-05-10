@@ -4,10 +4,11 @@ import (
 	"com.jetapcglobal.b2b.com/models"
 	"gorm.io/gorm"
 	"strconv"
+	"strings"
 )
 
 type PackInventoryRepository interface {
-	ListByTenantID(tenantID int64) ([]models.TenantPackInventoryItem, error)
+	ListByTenantID(tenantID int64, statusFilter string) ([]models.TenantPackInventoryItem, error)
 }
 
 type packInventoryRepository struct {
@@ -18,7 +19,7 @@ func NewPackInventoryRepository(db *gorm.DB) PackInventoryRepository {
 	return &packInventoryRepository{db: db}
 }
 
-func (r *packInventoryRepository) ListByTenantID(tenantID int64) ([]models.TenantPackInventoryItem, error) {
+func (r *packInventoryRepository) ListByTenantID(tenantID int64, statusFilter string) ([]models.TenantPackInventoryItem, error) {
 	const query = `
 WITH latest_catalog AS (
 	SELECT DISTINCT ON (catalog_id)
@@ -38,7 +39,7 @@ SELECT
 	COALESCE(d.display_name, lc.page_name, lc.name, '') AS country_name,
 	COALESCE(lc.prices -> 'usd' ->> 'value', '') AS price_usd,
 	NULLIF(a.receiver_id, '') AS receiver_user_id,
-	COALESCE(NULLIF(a.status, ''), CASE WHEN COALESCE(a.receiver_id, '') = '' THEN 'UNALLOCATED' ELSE 'ASSIGNED' END) AS allocation_status,
+	COALESCE(NULLIF(a.status, ''), CASE WHEN COALESCE(a.receiver_id, '') = '' THEN 'UNALLOCATED' ELSE 'ALLOCATED' END) AS allocation_status,
 	a.order_id,
 	a.invoice_id,
 	a.request_id,
@@ -50,10 +51,16 @@ LEFT JOIN latest_catalog lc ON lc.catalog_id = a.catalog_id
 LEFT JOIN tbl_destination d ON d.name = lc.page_name AND d.deleted_at IS NULL
 WHERE a.deleted_at IS NULL
 	AND a.tenant = ?
+	AND (
+		? = ''
+		OR (? = 'allocated' AND UPPER(COALESCE(NULLIF(a.status, ''), CASE WHEN COALESCE(a.receiver_id, '') = '' THEN 'UNALLOCATED' ELSE 'ALLOCATED' END)) = 'ALLOCATED')
+		OR (? = 'unallocated' AND UPPER(COALESCE(NULLIF(a.status, ''), CASE WHEN COALESCE(a.receiver_id, '') = '' THEN 'UNALLOCATED' ELSE 'ALLOCATED' END)) = 'UNALLOCATED')
+	)
 ORDER BY a.created_at DESC, a.id DESC;`
 
 	results := make([]models.TenantPackInventoryItem, 0)
 	tenantIDText := strconv.FormatInt(tenantID, 10)
-	err := r.db.Raw(query, tenantIDText).Scan(&results).Error
+	normalizedFilter := strings.ToLower(strings.TrimSpace(statusFilter))
+	err := r.db.Raw(query, tenantIDText, normalizedFilter, normalizedFilter, normalizedFilter).Scan(&results).Error
 	return results, err
 }
