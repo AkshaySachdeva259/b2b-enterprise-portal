@@ -11,6 +11,7 @@ import (
 
 type TenantWalletController interface {
 	GetWalletByTenantID(w http.ResponseWriter, r *http.Request)
+	CheckTenant(w http.ResponseWriter, r *http.Request)
 }
 
 type tenantWalletController struct {
@@ -19,6 +20,35 @@ type tenantWalletController struct {
 
 func NewTenantWalletController(svc services.TenantWalletService) TenantWalletController {
 	return &tenantWalletController{svc: svc}
+}
+
+func (c *tenantWalletController) CheckTenant(w http.ResponseWriter, r *http.Request) {
+	tenantIDParam := mux.Vars(r)["tenant_id"]
+	if tenantIDParam == "" {
+		writeError(w, http.StatusBadRequest, "tenant_id path parameter is required")
+		return
+	}
+
+	tenantID, err := strconv.ParseInt(tenantIDParam, 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "tenant_id must be a valid int64")
+		return
+	}
+
+	exists, err := c.svc.TenantExists(tenantID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to check tenant")
+		return
+	}
+	if !exists {
+		writeError(w, http.StatusNotFound, "no tenant registered")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, Response{
+		Data:    map[string]int64{"tenant_id": tenantID},
+		Message: "tenant registered",
+	})
 }
 
 func (c *tenantWalletController) GetWalletByTenantID(w http.ResponseWriter, r *http.Request) {

@@ -10,6 +10,7 @@ import (
 type TenantWalletRepository interface {
 	GetWalletByTenantID(tenantID int64) (*models.TenantWallet, error)
 	GetRecentTransactionsByTenantID(tenantID int64, limit int) ([]models.CreditLedgerTransaction, error)
+	TenantExists(tenantID int64) (bool, error)
 }
 
 type tenantWalletRepository struct {
@@ -37,6 +38,17 @@ func (r *tenantWalletRepository) GetWalletByTenantID(tenantID int64) (*models.Te
 		return nil, err
 	}
 	return &result, nil
+}
+
+func (r *tenantWalletRepository) TenantExists(tenantID int64) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.TenantWallet{}).
+		Where("tenant_id = ?", tenantID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *tenantWalletRepository) GetRecentTransactionsByTenantID(tenantID int64, limit int) ([]models.CreditLedgerTransaction, error) {

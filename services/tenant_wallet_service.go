@@ -12,6 +12,7 @@ var ErrTenantWalletNotFound = errors.New("tenant wallet not found")
 
 type TenantWalletService interface {
 	GetWalletSummaryByTenantID(tenantID int64) (*models.TenantWalletSummary, error)
+	TenantExists(tenantID int64) (bool, error)
 }
 
 type tenantWalletService struct {
@@ -20,6 +21,10 @@ type tenantWalletService struct {
 
 func NewTenantWalletService(repo repository.TenantWalletRepository) TenantWalletService {
 	return &tenantWalletService{repo: repo}
+}
+
+func (s *tenantWalletService) TenantExists(tenantID int64) (bool, error) {
+	return s.repo.TenantExists(tenantID)
 }
 
 func (s *tenantWalletService) GetWalletSummaryByTenantID(tenantID int64) (*models.TenantWalletSummary, error) {

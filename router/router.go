@@ -22,6 +22,7 @@ func New(db *gorm.DB) http.Handler {
 	packInventoryRepo := repository.NewPackInventoryRepository(db)
 	orderRepo := repository.NewOrderRepository(db)
 	cartRepo := repository.NewCartRepository(db)
+	tenantRepo := repository.NewTenantRepository(db)
 
 	destSvc := services.NewDestinationService(destRepo)
 	catalogSvc := services.NewCatalogService(catalogRepo, destRepo)
@@ -32,6 +33,7 @@ func New(db *gorm.DB) http.Handler {
 	orderSvc := services.NewOrderService(orderRepo)
 	emailNotifier := services.NewEmailNotifierFromEnv()
 	packAssignmentSvc := services.NewPackAssignmentService(esimRepo, catalogRepo, emailNotifier)
+	tenantSvc := services.NewTenantService(tenantRepo)
 
 	destCtrl := controllers.NewDestinationController(destSvc)
 	catalogCtrl := controllers.NewCatalogController(catalogSvc)
@@ -43,6 +45,7 @@ func New(db *gorm.DB) http.Handler {
 	packInventoryCtrl := controllers.NewPackInventoryController(packInventorySvc)
 	orderCtrl := controllers.NewOrderController(orderSvc)
 	packAssignmentCtrl := controllers.NewPackAssignmentController(packAssignmentSvc)
+	tenantCtrl := controllers.NewTenantController(tenantSvc)
 
 	// Handle preflight OPTIONS for all routes
 	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodOptions)
@@ -74,6 +77,8 @@ func New(db *gorm.DB) http.Handler {
 	api.HandleFunc("/esims/order", esimCtrl.OrderEsims).Methods(http.MethodPost)
 	api.HandleFunc("/esims/assign-catalog", esimCtrl.AssignCatalog).Methods(http.MethodPost)
 
+	api.HandleFunc("/tenants/check", tenantCtrl.CheckByEmail).Methods(http.MethodGet)
+	api.HandleFunc("/tenants/{tenant_id}/check", tenantWalletCtrl.CheckTenant).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/credit-limit", tenantCreditLimitCtrl.GetCurrentByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/wallet", tenantWalletCtrl.GetWalletByTenantID).Methods(http.MethodGet)
 
