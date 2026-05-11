@@ -15,12 +15,14 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var ErrInsufficientEsimInventory = errors.New("insufficient released esim inventory")
-var ErrTenantEsimNotFound = errors.New("esim not found in tenant inventory")
-var ErrTenantHasNoEsims = errors.New("tenant has no esims in inventory")
-var ErrPackAssignmentTenantWalletNotFound = errors.New("tenant wallet not found")
-var ErrPackAssignmentTenantWalletInactive = errors.New("tenant wallet is not active")
-var ErrPackAssignmentWalletCurrencyUnsupported = errors.New("tenant wallet currency is not supported")
+var (
+	ErrInsufficientEsimInventory               = errors.New("insufficient released esim inventory")
+	ErrTenantEsimNotFound                      = errors.New("esim not found in tenant inventory.")
+	ErrTenantHasNoEsims                        = errors.New("tenant has no esims in inventory")
+	ErrPackAssignmentTenantWalletNotFound      = errors.New("tenant wallet not found")
+	ErrPackAssignmentTenantWalletInactive      = errors.New("tenant wallet is not active")
+	ErrPackAssignmentWalletCurrencyUnsupported = errors.New("tenant wallet currency is not supported")
+)
 
 type InsufficientWalletBalanceError struct {
 	AvailableBalance string

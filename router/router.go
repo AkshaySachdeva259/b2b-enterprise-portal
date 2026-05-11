@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"com.jetapcglobal.b2b.com/controllers"
+	"com.jetapcglobal.b2b.com/middleware"
 	"com.jetapcglobal.b2b.com/repository"
 	"com.jetapcglobal.b2b.com/services"
 	"github.com/gorilla/mux"
@@ -43,6 +44,9 @@ func New(db *gorm.DB) http.Handler {
 	orderCtrl := controllers.NewOrderController(orderSvc)
 	packAssignmentCtrl := controllers.NewPackAssignmentController(packAssignmentSvc)
 
+	// Handle preflight OPTIONS for all routes
+	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodOptions)
+
 	// Public routes
 	api := r.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/pages", destCtrl.GetDestinations).Methods(http.MethodGet)
@@ -73,5 +77,5 @@ func New(db *gorm.DB) http.Handler {
 	api.HandleFunc("/tenants/{tenant_id}/credit-limit", tenantCreditLimitCtrl.GetCurrentByTenantID).Methods(http.MethodGet)
 	api.HandleFunc("/tenants/{tenant_id}/wallet", tenantWalletCtrl.GetWalletByTenantID).Methods(http.MethodGet)
 
-	return r
+	return middleware.CORS(r)
 }
